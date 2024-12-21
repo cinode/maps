@@ -1,0 +1,22 @@
+apiVersion: v2
+
+name: osm-machinery
+
+description: Toolbox to synchronize cinode maps with OpenStreetMap
+
+type: application
+
+version: "0.0.1"
+
+home: https://maps.cinodenet.org/
+
+sources:
+  - https://github.com/cinode/maps
+
+keywords:
+  - cinode
+  - maps
+  - OpenStreetMap
+
+kubeVersion: ">= 1.23.0"  # Support generic ephemeral volumes
+
