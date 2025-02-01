@@ -1,3 +1,64 @@
+---
 # Default values for osm-machinery.
 # This is a YAML-formatted file.
 # Declare variables to be passed into your templates.
+
+postgres:
+  postgresqlDatabase: gis
+  auth:
+    username: renderer
+    password: renderer
+    database: gis
+  primary:
+    #persistence:
+    #  size: 1G
+    #  # To automatically mount local directory, uncomment and use unique storageClass
+    #  hostPath: /var/lib/cinode/osm/postgres
+    #  storageClass: "cinode-maps-postgres-data"
+
+    resources:
+      requests: {}
+      limits: {}
+
+    extendedConfiguration: |
+      # Suggested minimal settings from
+      # https://ircama.github.io/osm-carto-tutorials/tile-server-ubuntu/
+
+      shared_buffers = 128MB
+      min_wal_size = 1GB
+      # max_wal_size = 2GB # Overridden below
+      maintenance_work_mem = 256MB
+
+      # Suggested settings from
+      # https://github.com/openstreetmap/chef/blob/master/roles/tile.rb#L38-L45
+
+      max_connections = 250
+      temp_buffers = 32MB
+      work_mem = 128MB
+      wal_buffers = 1024kB
+      wal_writer_delay = 500ms
+      commit_delay = 10000
+      # checkpoint_segments = 60 # unrecognized in psql 10.7.1
+      max_wal_size = 2880MB
+      random_page_cost = 1.1
+      track_activity_query_size = 16384
+      autovacuum_vacuum_scale_factor = 0.05
+      autovacuum_analyze_scale_factor = 0.02
+
+      autovacuum = on
+
+    initdb:
+      scripts:
+        00_init_pg_stat_statements.sh: |
+          #!/bin/sh
+          export PGPASSWORD=$POSTGRES_POSTGRES_PASSWORD
+          psql -U postgres -d gis -c "
+            CREATE EXTENSION IF NOT EXISTS postgis;
+            CREATE EXTENSION IF NOT EXISTS hstore;
+            ALTER TABLE geometry_columns OWNER TO renderer;
+            ALTER TABLE spatial_ref_sys OWNER TO renderer;
+          "
+
+    shmVolume:
+      enabled: true
+      # sizeLimit: 2Gi

@@ -1,0 +1,24 @@
+{{- if $.Values.postgres.primary.persistence.hostPath | default false }}
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: {{ print $.Release.Name "-postgres-pv" | quote }}
+spec:
+  capacity:
+    storage: {{
+      $.Values.postgres.primary.persistence.size |
+      required "persistent volume size required for hostPath volume" |
+      quote
+    }}
+  volumeMode: Filesystem
+  accessModes: {{ $.Values.postgres.primary.persistence.accessModes | toYaml | nindent 4 }}
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: {{
+    $.Values.postgres.primary.persistence.storageClass |
+    required "unique persistent volume class required for hostPath volume" |
+    quote
+  }}
+  hostPath:
+    path: {{ $.Values.postgres.primary.persistence.hostPath | quote }}
+{{- end }}
