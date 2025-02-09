@@ -64,10 +64,34 @@ postgres:
       # sizeLimit: 2Gi
 
 tileServer:
+  syncJob:
+    enabled: true
+    schedule: "* * * * *"
+
+  webServer:
+    enabled: true
+
+    ingress:
+      enabled: false
+      hosts:
+        - cinode-maps-source
+
+    resources: {}
+
   image:
     registry: docker.io
     repository: overv/openstreetmap-tile-server
     tag: latest # TODO: Use fixed version
+
+  securityContext:
+    runAsUser: 1000
+    runAsGroup: 1000
+    fsGroup: 1000
+    fsGroupChangePolicy: "OnRootMismatch"
+
+  containerSecurityContext:
+    readOnlyRootFilesystem: true
+    allowPrivilegeEscalation: false
 
   persistence:
     size: 1G
@@ -76,13 +100,6 @@ tileServer:
 
 regions:
   - enabled: true
-    name: europe-poland
-    pbf: https://download.geofabrik.de/europe/poland-latest.osm.pbf
-    poly: https://download.geofabrik.de/europe/poland.poly
-
-
-  - enabled: true
-    initial: true
-    name: europe-germany
-    pbf: https://download.geofabrik.de/europe/germany-latest.osm.pbf
-    poly: https://download.geofabrik.de/europe/germany.poly
+    name: europe-luxembourg
+    pbf: https://download.geofabrik.de/europe/luxembourg-latest.osm.pbf
+    poly: https://download.geofabrik.de/europe/luxembourg.poly
