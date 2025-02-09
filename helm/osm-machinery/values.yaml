@@ -98,13 +98,6 @@ tileServer:
 
 regions:
   - enabled: true
-    name: europe-poland
-    pbf: https://download.geofabrik.de/europe/poland-latest.osm.pbf
-    poly: https://download.geofabrik.de/europe/poland.poly
-
-
-  - enabled: true
-    initial: true
-    name: europe-germany
-    pbf: https://download.geofabrik.de/europe/germany-latest.osm.pbf
-    poly: https://download.geofabrik.de/europe/germany.poly
+    name: europe-luxembourg
+    pbf: https://download.geofabrik.de/europe/luxembourg-latest.osm.pbf
+    poly: https://download.geofabrik.de/europe/luxembourg.poly
