@@ -56,7 +56,7 @@ spec:
 
               # Small fix to the udpate script to use pgdb password
               cp $(which openstreetmap-tiles-update-expire.sh ) /tmp/otue.sh
-              sed -i 's/^TRIM_OPTIONS=.*$/TRIM_OPTIONS="-d $DBNAME --password"/g' /tmp/otue.sh
+              sed -i 's/^TRIM_OPTIONS=.*$/TRIM_OPTIONS="-d $DBNAME --user $PGUSER --password"/g' /tmp/otue.sh
 
               if [ ! -f /data/database/planet-import-complete ]; then
 
@@ -93,7 +93,7 @@ spec:
                   -S /data/style/${NAME_STYLE:-openstreetmap-carto.style}  \
                   /data/download/region.osm.pbf  \
                   ${OSM2PGSQL_EXTRA_ARGS:-}  \
-                ;
+                2>&1 | stdbuf -o0 tr '\r' '\n';
 
                 # Create indexes
                 if [ -f "/data/style/${NAME_SQL:-indexes.sql}" ]; then
