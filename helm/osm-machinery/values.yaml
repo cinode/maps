@@ -64,10 +64,24 @@ postgres:
       # sizeLimit: 2Gi
 
 tileServer:
+  syncJob:
+    enabled: true
+    schedule: "* * * * *"
+
   image:
     registry: docker.io
     repository: overv/openstreetmap-tile-server
     tag: latest # TODO: Use fixed version
+
+  securityContext:
+    runAsUser: 1000
+    runAsGroup: 1000
+    fsGroup: 1000
+    fsGroupChangePolicy: "OnRootMismatch"
+
+  containerSecurityContext:
+    readOnlyRootFilesystem: true
+    allowPrivilegeEscalation: false
 
   persistence:
     size: 1G
