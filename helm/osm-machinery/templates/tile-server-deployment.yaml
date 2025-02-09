@@ -27,6 +27,7 @@ spec:
             - name: PGPASSWORD
               value: {{ $.Values.postgres.auth.password | quote }}
           securityContext: {{- $.Values.tileServer.containerSecurityContext | toYaml | nindent 12 }}
+          resources: {{ $.Values.tileServer.webServer.resources | toYaml | nindent 12 }}
           volumeMounts:
             - name: state
               mountPath: /data/tiles

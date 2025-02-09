@@ -76,6 +76,8 @@ tileServer:
       hosts:
         - cinode-maps-source
 
+    resources: {}
+
   image:
     registry: docker.io
     repository: overv/openstreetmap-tile-server
