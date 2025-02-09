@@ -1,0 +1,16 @@
+{{- if $.Values.tileServer.persistence.hostPath | default false }}
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: {{ print $.Release.Name "-tile-server-pv" | quote }}
+spec:
+  capacity:
+    storage: {{ $.Values.tileServer.persistence.size | quote }}
+  volumeMode: Filesystem
+  accessModes: {{ $.Values.tileServer.persistence.accessModes | toYaml | nindent 4 }}
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: {{ $.Values.tileServer.persistence.storageClass | quote }}
+  hostPath:
+    path: {{ $.Values.tileServer.persistence.hostPath | quote }}
+{{- end }}

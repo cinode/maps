@@ -4,6 +4,9 @@ kind: PersistentVolumeClaim
 metadata:
   name: {{ print $.Release.Name "-tile-server-data" | quote }}
 spec:
+  {{- if $.Values.tileServer.persistence.storageClass }}
+  storageClassName: {{ $.Values.tileServer.persistence.storageClass | quote }}
+  {{- end }}
   accessModes: {{ $.Values.tileServer.persistence.accessModes | toYaml | nindent 4 }}
   resources:
     requests:
