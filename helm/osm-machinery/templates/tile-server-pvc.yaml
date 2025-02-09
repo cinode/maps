@@ -1,0 +1,10 @@
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ print $.Release.Name "-tile-server-data" | quote }}
+spec:
+  accessModes: {{ $.Values.tileServer.persistence.accessModes | toYaml | nindent 4 }}
+  resources:
+    requests:
+      storage: {{ $.Values.tileServer.persistence.size | quote }}

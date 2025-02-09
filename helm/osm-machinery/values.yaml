@@ -62,3 +62,27 @@ postgres:
     shmVolume:
       enabled: true
       # sizeLimit: 2Gi
+
+tileServer:
+  image:
+    registry: docker.io
+    repository: overv/openstreetmap-tile-server
+    tag: latest # TODO: Use fixed version
+
+  persistence:
+    size: 1G
+    accessModes:
+      - ReadWriteOnce
+
+regions:
+  - enabled: true
+    name: europe-poland
+    pbf: https://download.geofabrik.de/europe/poland-latest.osm.pbf
+    poly: https://download.geofabrik.de/europe/poland.poly
+
+
+  - enabled: true
+    initial: true
+    name: europe-germany
+    pbf: https://download.geofabrik.de/europe/germany-latest.osm.pbf
+    poly: https://download.geofabrik.de/europe/germany.poly
