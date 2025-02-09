@@ -6,7 +6,7 @@ description: Toolbox to synchronize cinode maps with OpenStreetMap
 
 type: application
 
-version: "0.0.3"
+version: "0.0.4"
 
 home: https://maps.cinodenet.org/
 
