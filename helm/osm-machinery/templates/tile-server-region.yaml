@@ -1,0 +1,130 @@
+{{- range $.Values.regions }}
+{{- if .enabled }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ print $.Release.Name "-region-sync-" .name | quote }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: {{ print $.Release.Name "-region-sync-" .name | quote }}
+  template:
+    metadata:
+      labels:
+        app: {{ print $.Release.Name "-region-sync-" .name | quote }}
+        region: {{ .name | quote }}
+    spec:
+      containers:
+        - name: {{ print "region-sync-init-" .name | quote }}
+          image: {{ printf "%s/%s:%s" $.Values.tileServer.image.registry $.Values.tileServer.image.repository $.Values.tileServer.image.tag | quote }}
+          env:
+            - name: PGHOST
+              value: {{ print $.Release.Name "-postgres" | quote }}
+            - name: PGDATABASE
+              value: {{ $.Values.postgres.auth.database | quote }}
+            - name: PGUSER
+              value: {{ $.Values.postgres.auth.username | quote }}
+            - name: PGPASSWORD
+              value: {{ $.Values.postgres.auth.password | quote }}
+            - name: UPDATES
+              value: enabled
+            - name: DOWNLOAD_PBF
+              value: {{ .pbf | quote }}
+            - name: DOWNLOAD_POLY
+              value: {{ .poly | quote }}
+          volumeMounts:
+            - name: state
+              mountPath: /data
+              subPath: {{ print "region/" .name | quote }}
+            - name: tmp
+              mountPath: /var/log/tiles
+              subPath: var/log/tiles
+            - name: tmp
+              mountPath: /tmp
+              subPath: tmp
+            - name: tmp
+              mountPath: /var/run
+              subPath: var/run
+          command:
+            - sh
+            - -c
+            - |
+              set -eu
+              set -x
+
+              # Small fix to the udpate script to use pgdb password
+              cp $(which openstreetmap-tiles-update-expire.sh ) /tmp/otue.sh
+              sed -i 's/^TRIM_OPTIONS=.*$/TRIM_OPTIONS="-d $DBNAME --password"/g' /tmp/otue.sh
+
+              if [ ! -f /data/database/planet-import-complete ]; then
+
+                echo "INFO: Cleaning up"
+
+                rm -rf /data/download/; mkdir /data/download/
+                rm -rf /data/database/; mkdir /data/database/
+                rm -rf /data/tiles/;    mkdir /data/tiles/
+                rm -rf /data/style/;    mkdir /data/style/
+
+                echo "Creating style data"
+                cp -r /home/renderer/src/openstreetmap-carto-backup/* /data/style/
+                cd /data/style/
+                carto ${NAME_MML:-project.mml} > mapnik.xml
+
+                echo "INFO: Download PBF file: $DOWNLOAD_PBF"
+                wget ${WGET_ARGS:-} "$DOWNLOAD_PBF" -O /data/download/region.osm.pbf
+
+                echo "INFO: Download PBF-POLY file: $DOWNLOAD_POLY"
+                wget ${WGET_ARGS:-} "$DOWNLOAD_POLY" -O /data/database/region.poly
+
+                # determine and set osmosis_replication_timestamp (for consecutive updates)
+                REPLICATION_TIMESTAMP=`osmium fileinfo -g header.option.osmosis_replication_timestamp /data/download/region.osm.pbf`
+
+                # initial setup of osmosis workspace (for consecutive updates)
+                /tmp/otue.sh $REPLICATION_TIMESTAMP || true
+
+                # Import data
+                osm2pgsql -d gis --create --slim -G --hstore  \
+                  --tag-transform-script /data/style/${NAME_LUA:-openstreetmap-carto.lua}  \
+                  --number-processes ${THREADS:-4}  \
+                  -S /data/style/${NAME_STYLE:-openstreetmap-carto.style}  \
+                  /data/download/region.osm.pbf  \
+                  ${OSM2PGSQL_EXTRA_ARGS:-}  \
+                ;
+
+                # Create indexes
+                if [ -f "/data/style/${NAME_SQL:-indexes.sql}" ]; then
+                  psql -d gis -f "/data/style/${NAME_SQL:-indexes.sql}"
+                fi
+
+                # Import external data
+                python3 /data/style/scripts/get-external-data.py -c /data/style/external-data.yml -D /data/style/data
+
+                # Register that data has changed for mod_tile caching purposes
+                touch /data/database/planet-import-complete
+
+                echo "INFO: Initialization complete!"
+              fi
+
+              echo "INFO: Starting synchronization loop"
+
+              touch /var/log/tiles/run.log;       tail -f /var/log/tiles/run.log       >> /proc/1/fd/1 &
+              touch /var/log/tiles/osmosis.log;   tail -f /var/log/tiles/osmosis.log   >> /proc/1/fd/1 &
+              touch /var/log/tiles/expiry.log;    tail -f /var/log/tiles/expiry.log    >> /proc/1/fd/1 &
+              touch /var/log/tiles/osm2pgsql.log; tail -f /var/log/tiles/osm2pgsql.log >> /proc/1/fd/1 &
+
+              while true; do
+                sh /tmp/otue.sh &
+                sleep 60
+              done
+
+      volumes:
+        - name: tmp
+          emptyDir: {}
+
+        - name: state
+          persistentVolumeClaim:
+            claimName: {{ print $.Release.Name "-tile-server-data" | quote }}
+{{- end }}
+{{- end }}
