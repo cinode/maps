@@ -99,8 +99,62 @@ tileServer:
     accessModes:
       - ReadWriteOnce
 
+cinodeUpload:
+  enabled: true
+
+  schedule: "0 0 * * 0"
+
+  image:
+    registry: ghcr.io
+    repository: cinode/tiles-updater
+    tag: latest # TODO: Use fixed version
+
+  securityContext:
+    runAsUser: 1000
+    runAsGroup: 1000
+    fsGroup: 1000
+    fsGroupChangePolicy: "OnRootMismatch"
+
+  containerSecurityContext:
+    readOnlyRootFilesystem: true
+    allowPrivilegeEscalation: false
+
+  minZoom: 0
+  planetMaxZoom: 9
+  defaultRegionMaxZoom: 14
+
+  maxTileDownloadRetries: 15
+  maxTileDownloadRetryDelaySec: 300
+
+  datastore:
+    value: "memory://"
+    existingSecret: false
+    secretName: ""
+    secretKey: datastore
+
+  writerInfo:
+    value: ""
+    existingSecret: false
+    secretName: ""
+    secretKey: writerinfo
+
 regions:
   - enabled: true
     name: europe-luxembourg
     pbf: https://download.geofabrik.de/europe/luxembourg-latest.osm.pbf
     poly: https://download.geofabrik.de/europe/luxembourg.poly
+    geoBBox:
+      minLon: 5.726280
+      minLat: 49.435092
+      maxLon: 6.554718
+      maxLat: 50.190968
+
+  - enabled: true
+    name: europe-luxembourg-city
+    skipDownload: true
+    geoBBox:
+      minLon:  6.066685
+      minLat: 49.560059
+      maxLon:  6.203113
+      maxLat: 49.654016
+    maxZoom: 18
