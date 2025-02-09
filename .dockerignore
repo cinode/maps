@@ -1,0 +1,8 @@
+deploy/
+build/
+helm/
+.git/
+.github/
+**/tmp/
+.gitignore
+.dockerignore
