@@ -89,6 +89,7 @@ type DetailedRegionConfig struct {
 
 type Config struct {
 	URLTemplate                  string                 `yaml:"urlTemplate"`
+	MinZoom                      int                    `yaml:"minZoom"`
 	PlanetMaxZoom                int                    `yaml:"planetMaxZoom"`
 	MaxTileDownloadRetries       int                    `yaml:"maxTileDownloadRetries"`
 	MaxTileDownloadRetryDelaySec int                    `yaml:"maxTileDownloadRetryDelaySec"`
@@ -288,7 +289,7 @@ func (t *tilesGenerator) Process(ctx context.Context) error {
 	}
 
 	// Fetch all tiles
-	for z := 0; ctx.Err() == nil && z <= maxZoomLevel; z++ {
+	for z := t.cfg.MinZoom; ctx.Err() == nil && z <= maxZoomLevel; z++ {
 		err := t.genZLayer(ctx, z, t.log.With("z", z))
 		if err != nil {
 			return err
