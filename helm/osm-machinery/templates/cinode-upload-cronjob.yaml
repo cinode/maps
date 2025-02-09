@@ -24,14 +24,7 @@ spec:
           securityContext: {{- $.Values.cinodeUpload.securityContext | toYaml | nindent 12 }}
           containers:
             - name: "data-sync"
-              image: {{
-                printf
-                  "%s/%s:%s"
-                  $.Values.cinodeUpload.image.registry
-                  $.Values.cinodeUpload.image.repository
-                  $.Values.cinodeUpload.image.tag
-                | quote
-              }}
+              {{- include "osm-machinery.image" $.Values.cinodeUpload.image | indent 14 }}
               env:
                 {{- if $.Values.cinodeUpload.writerInfo.existingSecret | default false }}
                   - name: CINODE_MAPTILES_WRITERINFO

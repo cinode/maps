@@ -30,7 +30,7 @@ spec:
           securityContext: {{- $.Values.tileServer.securityContext | toYaml | nindent 12 }}
           containers:
             - name: "data-sync"
-              image: {{ printf "%s/%s:%s" $.Values.tileServer.image.registry $.Values.tileServer.image.repository $.Values.tileServer.image.tag | quote }}
+              {{- include "osm-machinery.image" $.Values.tileServer.image | indent 14 }}
               env:
                 - name: PGHOST
                   value: {{ print $.Release.Name "-postgres" | quote }}
