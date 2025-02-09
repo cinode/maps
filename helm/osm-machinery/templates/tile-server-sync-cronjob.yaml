@@ -2,8 +2,13 @@
 {{- /* Create a filtered list of regions to support */}}
 {{- $regions := list }}
 {{- range $.Values.regions }}
-{{-   if .enabled }}
-{{-     $regions = append $regions . }}
+{{-   if and .enabled ( not ( .skipDownload | default false ) ) }}
+{{-     $regions = append $regions ( dict
+            "enabled" .enabled
+            "name"    .name
+            "pbf"     .pbf
+            "poly"    .poly
+        ) }}
 {{-   end }}
 {{- end }}
 {{- $regionsChecksum := toJson $regions | sha256sum }}
