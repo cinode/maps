@@ -24,22 +24,56 @@ import (
 //go:embed defaultConfig.yaml
 var defaultConfig string
 
+const usageStr = `
+This program uploads map tiles from OpenStreetMap-compatible data source
+to Cinode datastore. It is configured through environment variables:
+
+ * CINODE_DATASTORE - address of the target datastore, required
+ * CINODE_MAPTILES_WRITERINFO - writerinfo of map tiles entrypoint
+ * CINODE_MAPTILES_NEW_WRITERINFO - create new writerinfo
+ * CINODE_MAPTILES_CONFIG - additional yaml configuration
+`
+
+func usage(msg string) {
+	for _, line := range strings.Split(usageStr, "\n") {
+		log.Println(line)
+	}
+	log.Fatalf("Error: %s\n", msg)
+}
+
 func main() {
 	ctx := context.Background()
 
-	ds, err := datastore.FromLocation(os.Getenv("CINODE_DATASTORE"))
+	var (
+		datastoreAddr = os.Getenv("CINODE_DATASTORE")
+		writerInfo    = os.Getenv("CINODE_MAPTILES_WRITERINFO")
+		newWriterInfo = os.Getenv("CINODE_MAPTILES_NEW_WRITERINFO") != ""
+		cfgYaml       = os.Getenv("CINODE_MAPTILES_CONFIG")
+	)
+
+	if datastoreAddr == "" {
+		usage("missing CINODE_DATASTORE env variable")
+	}
+
+	if writerInfo == "" && !newWriterInfo {
+		usage("either CINODE_MAPTILES_WRITERINFO or CINODE_MAPTILES_NEW_WRITERINFO env variable must be specified")
+	}
+
+	if cfgYaml == "" {
+		cfgYaml = defaultConfig
+	}
+
+	ds, err := datastore.FromLocation(datastoreAddr)
 	if err != nil {
-		log.Fatal(err)
+		usage("failed to open datastore: " + err.Error())
 	}
 
 	be := blenc.FromDatastore(ds)
 
-	wiOpt := cinodefs.RootWriterInfoString(os.Getenv("CINODE_MAPTILES_WRITERINFO"))
+	wiOpt := cinodefs.RootWriterInfoString(writerInfo)
 
-	newWi := false
-	if os.Getenv("CINODE_MAPTILES_NEW_WRITERINFO") != "" {
+	if newWriterInfo {
 		wiOpt = cinodefs.NewRootDynamicLink()
-		newWi = true
 	}
 
 	fs, err := cinodefs.New(
@@ -48,25 +82,20 @@ func main() {
 		wiOpt,
 	)
 	if err != nil {
-		log.Fatal(err)
-	}
-
-	if newWi {
-		fmt.Printf("Created new workspace:\n")
-		fmt.Printf("  Entrypoint: %s\n", golang.Must(fs.RootEntrypoint()))
-		fmt.Printf("  WriterInfo: %s\n", golang.Must(fs.RootWriterInfo(ctx)))
+		usage("failed to open cinodefs root: " + err.Error())
 	}
 
 	cfg := Config{}
 
-	cfgYaml := os.Getenv("CINODE_MAPTILES_CONFIG")
-	if len(cfgYaml) == 0 {
-		cfgYaml = defaultConfig
-	}
-
 	err = yaml.Unmarshal([]byte(cfgYaml), &cfg)
 	if err != nil {
-		log.Fatal(err)
+		usage("failed to parse additional configuration: " + err.Error())
+	}
+
+	if newWriterInfo {
+		fmt.Printf("Created new workspace:\n")
+		fmt.Printf("  Entrypoint: %s\n", golang.Must(fs.RootEntrypoint()))
+		fmt.Printf("  WriterInfo: %s\n", golang.Must(fs.RootWriterInfo(ctx)))
 	}
 
 	gen := tilesGenerator{
