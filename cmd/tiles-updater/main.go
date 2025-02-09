@@ -244,6 +244,12 @@ func (t *tilesGenerator) genZLayer(
 		if err != nil {
 			return err
 		}
+
+		// For region-based z layer, flush once every column for better persistency and faster results
+		err = t.fs.Flush(ctx)
+		if err != nil {
+			return fmt.Errorf("failed to flush the filesystem: %w", err)
+		}
 	}
 	return nil
 }
