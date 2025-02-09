@@ -76,12 +76,13 @@ tileServer:
 
 regions:
   - enabled: true
-    name: europe-poland-dolnoslaskie
-    pbf: https://download.geofabrik.de/europe/poland/dolnoslaskie-latest.osm.pbf
-    poly: https://download.geofabrik.de/europe/poland/dolnoslaskie.poly
+    name: europe-poland
+    pbf: https://download.geofabrik.de/europe/poland-latest.osm.pbf
+    poly: https://download.geofabrik.de/europe/poland.poly
+
 
   - enabled: true
-    first: true
-    name: europe-germany-sachsen
-    pbf: https://download.geofabrik.de/europe/germany/sachsen-latest.osm.pbf
-    poly: https://download.geofabrik.de/europe/germany/sachsen.poly
+    initial: true
+    name: europe-germany
+    pbf: https://download.geofabrik.de/europe/germany-latest.osm.pbf
+    poly: https://download.geofabrik.de/europe/germany.poly

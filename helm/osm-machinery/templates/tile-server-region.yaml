@@ -86,7 +86,7 @@ spec:
 
                 # Import data
                 osm2pgsql -d gis \
-                  {{ if .first | default false }} --create {{ else }} --append {{ end }} \
+                  {{ if .initial | default false }} --create {{ else }} --append {{ end }} \
                   --slim -G --hstore  \
                   --tag-transform-script /data/style/${NAME_LUA:-openstreetmap-carto.lua}  \
                   --number-processes ${THREADS:-4}  \
