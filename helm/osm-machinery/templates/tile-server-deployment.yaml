@@ -1,0 +1,86 @@
+{{- if $.Values.tileServer.webServer.enabled }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ print $.Release.Name "-tile-server" | quote }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: {{ print $.Release.Name "-tile-server" | quote }}
+  template:
+    metadata:
+      labels:
+        app: {{ print $.Release.Name "-tile-server" | quote }}
+    spec:
+      containers:
+        - name: tile-server
+          image: {{ printf "%s/%s:%s" $.Values.tileServer.image.registry $.Values.tileServer.image.repository $.Values.tileServer.image.tag | quote }}
+          env:
+            - name: PGHOST
+              value: {{ print $.Release.Name "-postgres" | quote }}
+            - name: PGDATABASE
+              value: {{ $.Values.postgres.auth.database | quote }}
+            - name: PGUSER
+              value: {{ $.Values.postgres.auth.username | quote }}
+            - name: PGPASSWORD
+              value: {{ $.Values.postgres.auth.password | quote }}
+          securityContext: {{- $.Values.tileServer.containerSecurityContext | toYaml | nindent 12 }}
+          volumeMounts:
+            - name: state
+              mountPath: /data/tiles
+              subPath: "tiles"
+
+            - name: tmp
+              mountPath: /data/style
+              subPath: data/style
+            - name: tmp
+              mountPath: /var/log/tiles
+              subPath: var/log/tiles
+            - name: tmp
+              mountPath: /var/log/apache2
+              subPath: var/log/apache2
+            - name: tmp
+              mountPath: /tmp
+              subPath: tmp
+            - name: tmp
+              mountPath: /var/run
+              subPath: var/run
+            - name: tmp
+              mountPath: /var/lock
+              subPath: var/lock
+          command:
+            - sh
+            - -c
+            - |
+              set -eu
+
+              echo "Creating style data"
+              cp -r /home/renderer/src/openstreetmap-carto-backup/* /data/style/
+              cd /data/style/
+              sed -i "/dbname:/a\\
+                  host: \"$PGHOST\"\\
+                  user: \"$PGUSER\"\\
+                  password: \"$PGPASSWORD\"
+              " /data/style/project.mml
+
+              carto ${NAME_MML:-project.mml} > mapnik.xml
+
+              echo "INFO: Starting tile server"
+
+              service apache2 restart
+
+              mkdir /run/renderd || true
+              chown renderer /run/renderd
+
+              sudo -u renderer renderd -f -c /etc/renderd.conf
+
+      volumes:
+        - name: tmp
+          emptyDir: {}
+
+        - name: state
+          persistentVolumeClaim:
+            claimName: {{ print $.Release.Name "-tile-server-data" | quote }}
+{{- end }}

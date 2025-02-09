@@ -68,6 +68,14 @@ tileServer:
     enabled: true
     schedule: "* * * * *"
 
+  webServer:
+    enabled: true
+
+    ingress:
+      enabled: false
+      hosts:
+        - cinode-maps-source
+
   image:
     registry: docker.io
     repository: overv/openstreetmap-tile-server
