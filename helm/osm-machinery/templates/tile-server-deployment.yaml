@@ -16,7 +16,7 @@ spec:
         app: {{ print $.Release.Name "-tile-server" | quote }}
       annotations:
         {{- range $s := $scripts }}
-          {{ print "checksum-scripts-" $s | quote }}: {{ $.Files.Get (print "scripts/script/" $s) | sha256sum }}
+          {{ print "checksum-scripts-" $s | quote }}: {{ tpl ($.Files.Get (print "scripts/" $s)) $ | sha256sum }}
         {{- end }}
     spec:
       containers:

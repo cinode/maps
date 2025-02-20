@@ -3,4 +3,7 @@ kind: ConfigMap
 metadata:
   name: {{ print $.Release.Name "-scripts" | quote }}
 data:
-{{ (.Files.Glob "scripts/*").AsConfig | indent 2 }}
+{{- range $path, $_ := .Files.Glob "scripts/**" }}
+  {{ base $path }}: |
+    {{- tpl ($.Files.Get $path) $ | nindent 4 }}
+{{- end }}
