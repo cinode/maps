@@ -1,0 +1,9 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ print $.Release.Name "-scripts" | quote }}
+data:
+{{- range $path, $_ := .Files.Glob "scripts/**" }}
+  {{ base $path }}: |
+    {{- tpl ($.Files.Get $path) $ | nindent 4 }}
+{{- end }}

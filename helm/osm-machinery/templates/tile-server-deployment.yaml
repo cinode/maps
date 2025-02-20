@@ -1,4 +1,5 @@
 {{- if $.Values.tileServer.webServer.enabled }}
+{{- $scripts := list "tile-server-entrypoint.sh" -}}
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -13,6 +14,10 @@ spec:
     metadata:
       labels:
         app: {{ print $.Release.Name "-tile-server" | quote }}
+      annotations:
+        {{- range $s := $scripts }}
+          {{ print "checksum-scripts-" $s | quote }}: {{ tpl ($.Files.Get (print "scripts/" $s)) $ | sha256sum }}
+        {{- end }}
     spec:
       containers:
         - name: tile-server
@@ -51,31 +56,9 @@ spec:
             - name: tmp
               mountPath: /var/lock
               subPath: var/lock
-          command:
-            - sh
-            - -c
-            - |
-              set -eu
-
-              echo "Creating style data"
-              cp -r /home/renderer/src/openstreetmap-carto-backup/* /data/style/
-              cd /data/style/
-              sed -i "/dbname:/a\\
-                  host: \"$PGHOST\"\\
-                  user: \"$PGUSER\"\\
-                  password: \"$PGPASSWORD\"
-              " /data/style/project.mml
-
-              carto ${NAME_MML:-project.mml} > mapnik.xml
-
-              echo "INFO: Starting tile server"
-
-              service apache2 restart
-
-              mkdir /run/renderd || true
-              chown renderer /run/renderd
-
-              sudo -u renderer renderd -f -c /etc/renderd.conf
+            - name: scripts-volume
+              mountPath: /app/scripts
+          command: [ "sh", "/app/scripts/tile-server-entrypoint.sh" ]
 
       volumes:
         - name: tmp
@@ -84,4 +67,13 @@ spec:
         - name: state
           persistentVolumeClaim:
             claimName: {{ print $.Release.Name "-tile-server-data" | quote }}
+
+        - name: scripts-volume
+          configMap:
+            name: {{ print $.Release.Name "-scripts" | quote }}
+            items:
+            {{- range $s := $scripts }}
+              - key: {{ $s | quote  }}
+                path: {{ $s | quote }}
+            {{- end }}
 {{- end }}
