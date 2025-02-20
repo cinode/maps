@@ -1,4 +1,5 @@
 {{- if $.Values.tileServer.webServer.enabled }}
+{{- $scripts := list "tile-server-entrypoint.sh" -}}
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -13,6 +14,10 @@ spec:
     metadata:
       labels:
         app: {{ print $.Release.Name "-tile-server" | quote }}
+      annotations:
+        {{- range $s := $scripts }}
+          {{ print "checksum-scripts-" $s | quote }}: {{ $.Files.Get (print "scripts/script/" $s) | sha256sum }}
+        {{- end }}
     spec:
       containers:
         - name: tile-server
@@ -66,4 +71,9 @@ spec:
         - name: scripts-volume
           configMap:
             name: {{ print $.Release.Name "-scripts" | quote }}
+            items:
+            {{- range $s := $scripts }}
+              - key: {{ $s | quote  }}
+                path: {{ $s | quote }}
+            {{- end }}
 {{- end }}
