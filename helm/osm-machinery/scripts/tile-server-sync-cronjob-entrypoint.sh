@@ -23,9 +23,12 @@ mkdir -p /data/style/
 # Cleanup any old download files
 [ "$( ls -A /data/download/ )" ] && rm -rf /data/download/*
 
-# Small fix to the update script to use pgdb password
+# Alter the syncer script:
+#  * fix to use pgdb password
+#  * instead of calling render_expired directly, call it through the expire server
 cp $(which openstreetmap-tiles-update-expire.sh ) /tmp/otue.sh
 sed -i 's/^TRIM_OPTIONS=.*$/TRIM_OPTIONS="-d $DBNAME --password"/g' /tmp/otue.sh
+sed -i 's/^if.*render_expired.*;.*then$/if ! curl --verbose -f -X POST --data-binary "@$EXPIRY_FILE.$$" "$EXPIRY_SERVER"; then/g' /tmp/otue.sh
 
 if [ z"$( cat /data/database/planet-import-complete 2>/dev/null || true )" = z"{{ $regionsChecksum }}" ]; then
     # The data has been imported, check if there's any diff and apply it

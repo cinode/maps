@@ -40,6 +40,8 @@ spec:
                   value: {{ $.Values.postgres.auth.username | quote }}
                 - name: PGPASSWORD
                   value: {{ $.Values.postgres.auth.password | quote }}
+                - name: EXPIRY_SERVER
+                  value: {{ print "http://" $.Release.Name "-tile-server-svc:8642/" | quote }}
               securityContext: {{- $.Values.tileServer.containerSecurityContext | toYaml | nindent 16 }}
               volumeMounts:
                 - name: state
