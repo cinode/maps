@@ -19,5 +19,6 @@ service apache2 restart
 
 mkdir /run/renderd || true
 chown renderer /run/renderd
+chown renderer /data/tiles
 
 sudo -u renderer renderd -f -c /etc/renderd.conf
