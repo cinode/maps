@@ -13,10 +13,13 @@ sed -i "/dbname:/a\\
 
 carto ${NAME_MML:-project.mml} > mapnik.xml
 
-echo "INFO: Starting tile server"
+echo "INFO: Starting dirty request server"
+sudo -u renderer python3 /app/scripts/expire-server.py &
 
+echo "INFO: Starting tile server"
 service apache2 restart
 
+echo "INFO: Starting renderd server"
 mkdir /run/renderd || true
 chown renderer /run/renderd
 chown renderer /data/tiles
