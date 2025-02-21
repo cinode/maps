@@ -1,5 +1,5 @@
 {{- if $.Values.tileServer.webServer.enabled }}
-{{- $scripts := list "tile-server-entrypoint.sh" -}}
+{{- $scripts := list "expire-server.py" "tile-server-entrypoint.sh" -}}
 ---
 apiVersion: apps/v1
 kind: Deployment
