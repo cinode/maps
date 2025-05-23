@@ -105,7 +105,7 @@ osm2pgsql -d gis --create --slim -G --hstore  \
     -S /data/style/${NAME_STYLE:-openstreetmap-carto.style}  \
     /data/download/region.osm.pbf  \
     ${OSM2PGSQL_EXTRA_ARGS:-}  \
-    ;
+2>&1 | stdbuf -o0 tr '\r' '\n';
 
 rm -rf /data/download/*
 
