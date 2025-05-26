@@ -123,8 +123,8 @@ cinodeUpload:
   planetMaxZoom: 9
   defaultRegionMaxZoom: 14
 
-  maxTileDownloadRetries: 15
-  maxTileDownloadRetryDelaySec: 300
+  maxTileDownloadRetries: 200
+  maxTileDownloadRetryDelaySec: 10
 
   datastore:
     value: "memory://"

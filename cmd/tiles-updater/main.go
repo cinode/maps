@@ -141,38 +141,51 @@ func (t *tilesGenerator) fetchTile(
 	url = strings.ReplaceAll(url, "{y}", fmt.Sprint(y))
 	url = strings.ReplaceAll(url, "{z}", fmt.Sprint(z))
 
+	retryDelay := time.Second
+
+	delayTimer := time.NewTimer(retryDelay)
+	defer delayTimer.Stop()
+
+	nextLoopRetryDelay := func() {
+		delayTimer.Reset(retryDelay)
+		select {
+		case <-delayTimer.C:
+		case <-ctx.Done():
+		}
+
+		retryDelay = min(
+			2*retryDelay,
+			time.Second*time.Duration(t.cfg.MaxTileDownloadRetryDelaySec),
+		)
+	}
+
 	for retry := 0; ctx.Err() == nil; retry++ {
 		log := log.With("url", url, "retry", retry)
 
 		log.InfoContext(ctx, "Fetching tile started")
 
-		retryDelay := time.Second * time.Duration(min((1<<retry), t.cfg.MaxTileDownloadRetryDelaySec))
-
 		resp, err := http.Get(url)
-		if err != nil {
-			log.ErrorContext(ctx, "Error downloading tile", "err", err)
-			time.Sleep(retryDelay)
-			continue
-		}
-
-		if resp.StatusCode >= 400 {
-			resp.Body.Close()
-
-			log.ErrorContext(ctx,
-				"Incorrect http status code when downloading tile",
-				"code", resp.StatusCode,
-				"status", resp.Status,
-			)
-
-			if retry >= t.cfg.MaxTileDownloadRetries {
-				return fmt.Errorf(
-					"tile server responded with status code %d (%s)",
-					resp.StatusCode,
-					resp.Status,
+		if err != nil || resp.StatusCode >= 400 {
+			if err != nil {
+				log.ErrorContext(ctx, "Error downloading tile", "err", err)
+				err = fmt.Errorf("error downloading tile: %w", err)
+			} else {
+				resp.Body.Close()
+				log.ErrorContext(ctx,
+					"Incorrect http status code when downloading tile",
+					"code", resp.StatusCode,
+					"status", resp.Status,
 				)
+				err = fmt.Errorf("incorrect http status code when downloading tile: %d %s", resp.StatusCode, resp.Status)
 			}
 
-			time.Sleep(retryDelay)
+			if retry >= t.cfg.MaxTileDownloadRetries {
+				return err
+			}
+
+			log.InfoContext(ctx, "Tile download failed, retrying", "retryDelay", retryDelay)
+			nextLoopRetryDelay()
+
 			continue
 		}
 
@@ -188,9 +201,11 @@ func (t *tilesGenerator) fetchTile(
 			resp.Body,
 		)
 		resp.Body.Close()
+
 		if err != nil {
-			log.ErrorContext(ctx, "Error uploading tile to Cinode", "err", err)
-			time.Sleep(retryDelay)
+			log.ErrorContext(ctx, "Error uploading tile to Cinode", "err", err, "retryDelay", retryDelay)
+			nextLoopRetryDelay()
+
 			continue
 		}
 

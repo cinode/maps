@@ -1,8 +1,8 @@
 urlTemplate: http://localhost:8080/tile/{z}/{x}/{y}.png
 minZoom: 0
 planetMaxZoom: 9
-maxTileDownloadRetries: 15
-maxTileDownloadRetryDelaySec: 300
+maxTileDownloadRetries: 100
+maxTileDownloadRetryDelaySec: 10
 detailedRegions:
   - name: europe-luxembourg
     geoBBox:
