@@ -107,7 +107,7 @@ cinodeUpload:
   image:
     registry: ghcr.io
     repository: cinode/tiles-updater
-    tag: latest # TODO: Use fixed version
+    tag: "0.0.9"
 
   securityContext:
     runAsUser: 1000
