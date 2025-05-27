@@ -27,6 +27,7 @@ jobs:
       matrix:
         app:
           - name: maps-tile-uploader
+          - name: maps-tile-server
     env:
       OUTPUTS_DIR: /tmp/outputs
 

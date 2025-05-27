@@ -1,0 +1,23 @@
+# syntax=docker/dockerfile:1
+
+FROM overv/openstreetmap-tile-server:latest
+
+LABEL org.opencontainers.image.title="Cinode Maps Tile Server"
+LABEL org.opencontainers.image.description="OpenStreetMap tile server with jemalloc memory allocator"
+LABEL org.opencontainers.image.source="https://github.com/cinode/maps"
+
+# Install jemalloc and clean up
+RUN apt-get update && \
+    apt-get install -y libjemalloc2 && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
+
+# Create wrapper script for renderd
+RUN echo '#!/bin/sh\n\
+# Wrapper script for renderd that sets up jemalloc environment\n\
+export LD_PRELOAD="/usr/lib/x86_64-linux-gnu/libjemalloc.so.2"\n\
+export MALLOC_CONF="background_thread:true,metadata_thp:auto,dirty_decay_ms:5000,muzzy_decay_ms:5000"\n\
+\n\
+# Execute the original renderd binary\n\
+exec /usr/bin/renderd "$@"' > /usr/local/bin/renderd-wrapper && \
+    chmod +x /usr/local/bin/renderd-wrapper

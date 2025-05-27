@@ -42,8 +42,9 @@ fi
 
 for image in \
     maps-tile-uploader \
+    maps-tile-server \
 ; do
-    # Update tile-uploader image tags in values.yaml
+    # Update image tags in values.yaml
     sed -i "/^[[:space:]]*repository\:[[:space:]]*cinode\/${image}/{n;s/^\([[:space:]]*\)tag: .*/\1tag: \"$new_version\"/}" "$VALUES_FILE"
 done
 

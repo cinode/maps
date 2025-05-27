@@ -24,4 +24,4 @@ mkdir /run/renderd || true
 chown renderer /run/renderd
 chown renderer /data/tiles
 
-sudo -u renderer renderd -f -c /etc/renderd.conf
+sudo -u renderer /usr/local/bin/renderd-wrapper -f -c /etc/renderd.conf

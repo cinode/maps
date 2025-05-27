@@ -80,9 +80,9 @@ tileServer:
     resources: {}
 
   image:
-    registry: docker.io
-    repository: overv/openstreetmap-tile-server
-    tag: latest # TODO: Use fixed version
+    registry: ghcr.io
+    repository: cinode/maps-tile-server
+    tag: "0.0.9"
 
   securityContext:
     runAsUser: 1000
