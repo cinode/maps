@@ -30,7 +30,23 @@ cp $(which openstreetmap-tiles-update-expire.sh ) /tmp/otue.sh
 sed -i 's/^TRIM_OPTIONS=.*$/TRIM_OPTIONS="-d $DBNAME --password"/g' /tmp/otue.sh
 sed -i 's/^if.*render_expired.*;.*then$/if ! curl --verbose -f -X POST --data-binary "@$EXPIRY_FILE.$$" "$EXPIRY_SERVER"; then/g' /tmp/otue.sh
 
-if [ z"$( cat /data/database/planet-import-complete 2>/dev/null || true )" = z"{{ $regionsChecksum }}" ]; then
+
+INITIAL_IMPORT=false
+
+# Check if planet-import-complete exists and has correct checksum
+if [ ! -f /data/database/planet-import-complete ]; then
+    # No data exists yet, proceed with import
+    echo "INFO: No data exists yet, proceeding with initial import"
+    INITIAL_IMPORT=true
+{{- if $.Values.tileServer.syncJob.allowDataWipe }}
+elif [ z"$( cat /data/database/planet-import-complete 2>/dev/null || true )" != z"{{ $regionsChecksum }}" ]; then
+    # Checksum doesn't match, proceed with reimport
+    echo "INFO: Region configuration changed, proceeding with reimport"
+    INITIAL_IMPORT=true
+{{- end }}
+fi
+
+if [ "$INITIAL_IMPORT" = false ]; then
     # The data has been imported, check if there's any diff and apply it
     echo "INFO: Synchronizing osm changes"
 
@@ -46,8 +62,6 @@ fi
 
 # The data has not yet been imported or configuration of regions has changed,
 # start from scratch by importing the latest snapshot of the data
-
-echo "INFO: Doing initial data import"
 
 rm /data/database/planet-import-complete 2>/dev/null || true
 

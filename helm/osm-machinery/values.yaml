@@ -67,6 +67,7 @@ tileServer:
   syncJob:
     enabled: true
     schedule: "* * * * *"
+    allowDataWipe: false  # Controls whether data can be wiped and reimported when checksum changes
 
   webServer:
     enabled: true
