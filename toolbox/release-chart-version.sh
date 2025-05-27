@@ -9,6 +9,7 @@ cd "$(dirname "${BASH_SOURCE[0]}")/.."
 
 # Store Chart.yaml path in variable
 CHART_FILE="helm/osm-machinery/Chart.yaml"
+VALUES_FILE="helm/osm-machinery/values.yaml"
 
 # Check if on main branch
 current_branch=$(git rev-parse --abbrev-ref HEAD)
@@ -28,7 +29,6 @@ version=$(grep '^version:' "$CHART_FILE" | awk '{print $2}' | tr -d '"')
 
 # Tag current main branch with GPG signature and push tag
 git tag -s "v$version" -m "Version $version"
-git push origin "v$version"
 
 # Bump patch version (e.g., 1.2.3 -> 1.2.4)
 new_version=$(echo "$version" | awk -F. '{$NF = $NF + 1;} 1' | sed 's/ /./g')
@@ -40,6 +40,13 @@ else
     sed -i "s/^version: .*/version: $new_version/" "$CHART_FILE"
 fi
 
+# Update tile-uploader image tag in values.yaml
+# Match the tag line under cinodeUpload.image section
+sed -i "/^[[:space:]]*repository\:[[:space:]]*cinode\/tiles-updater/{n;s/^\([[:space:]]*\)tag: .*/\1tag: \"$new_version\"/}" "$VALUES_FILE"
+
 # Commit the version bump with GPG signature (but don't push)
-git add "$CHART_FILE"
+git add "$CHART_FILE" "$VALUES_FILE"
 git commit -S -m "Bump version to $new_version"
+
+echo "Remaining steps:"
+echo git push origin "v$version" main

@@ -1,0 +1,9 @@
+deploy/
+build/
+helm/
+.git/
+.github/
+.vscode/
+**/tmp/
+.gitignore
+.dockerignore

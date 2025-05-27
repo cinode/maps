@@ -1,0 +1,93 @@
+{{- if $.Values.cinodeUpload.enabled -}}
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: {{ print $.Release.Name "-cinode-upload" | quote }}
+spec:
+  # Schedule should be large enough to ensure there's enough time
+  # to perform the full sync
+  schedule: {{ $.Values.cinodeUpload.schedule | quote }}
+
+  # Do not allow concurrent sync jobs - this is critical because
+  # to avoid conflicts when multiple actors modify the same cinode
+  # fs data.
+  concurrencyPolicy: Forbid
+
+  jobTemplate:
+    spec:
+      template:
+        metadata:
+          labels:
+            app: {{ print $.Release.Name "-cinode-upload" | quote }}
+        spec:
+          securityContext: {{- $.Values.cinodeUpload.securityContext | toYaml | nindent 12 }}
+          containers:
+            - name: "data-sync"
+              {{- include "osm-machinery.image" $.Values.cinodeUpload.image | indent 14 }}
+              env:
+                {{- if $.Values.cinodeUpload.writerInfo.existingSecret | default false }}
+                  - name: CINODE_MAPTILES_WRITERINFO
+                    valueFrom:
+                      secretKeyRef:
+                        name: {{
+                          $.Values.cinodeUpload.writerInfo.secretName
+                          | required "secretName is required when writerInfo.existingSecret is set to true"
+                          | quote
+                        }}
+                        key: {{ $.Values.cinodeUpload.writerInfo.secretKey | quote }}
+                {{- else if $.Values.cinodeUpload.writerInfo.value }}
+                  - name: CINODE_MAPTILES_WRITERINFO
+                    valueFrom:
+                      secretKeyRef:
+                        name: {{
+                          $.Values.cinodeUpload.writerInfo.secretName
+                          | default ( print $.Release.Name "-cinode-upload-secret" )
+                          | quote
+                        }}
+                        key: {{ $.Values.cinodeUpload.writerInfo.secretKey | quote }}
+                {{- else }}
+                  - name: CINODE_MAPTILES_NEW_WRITERINFO
+                    value: "1"
+                {{- end }}
+
+                {{- if $.Values.cinodeUpload.datastore.existingSecret | default false }}
+                  - name: CINODE_DATASTORE
+                    valueFrom:
+                      secretKeyRef:
+                        name: {{
+                          $.Values.cinodeUpload.datastore.secretName
+                          | required "secretName is required when datastore.existingSecret is set to true"
+                          | quote
+                        }}
+                        key: {{ $.Values.cinodeUpload.datastore.secretKey | quote }}
+                {{- else if $.Values.cinodeUpload.datastore.value }}
+                  - name: CINODE_DATASTORE
+                    valueFrom:
+                      secretKeyRef:
+                        name: {{
+                          $.Values.cinodeUpload.datastore.secretName
+                          | default ( print $.Release.Name "-cinode-upload-secret" )
+                          | quote
+                        }}
+                        key: {{ $.Values.cinodeUpload.datastore.secretKey | quote }}
+                {{- else }}
+                  - name: CINODE_DATASTORE
+                    value: "memory://"
+                {{- end }}
+
+                  - name: CINODE_MAPTILES_CONFIG
+                    valueFrom:
+                      configMapKeyRef:
+                        name: {{ print $.Release.Name "-cinode-upload-config" | quote }}
+                        key: config
+              securityContext: {{- $.Values.cinodeUpload.containerSecurityContext | toYaml | nindent 16 }}
+              volumeMounts:
+                - name: tmp
+                  mountPath: /tmp
+                  subPath: tmp
+          restartPolicy: Never
+          volumes:
+            - name: tmp
+              emptyDir: {}
+{{- end -}}

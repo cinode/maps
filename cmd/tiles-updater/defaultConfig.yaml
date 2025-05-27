@@ -1,0 +1,21 @@
+urlTemplate: http://localhost:8080/tile/{z}/{x}/{y}.png
+minZoom: 0
+planetMaxZoom: 9
+maxTileDownloadRetries: 100
+maxTileDownloadRetryDelaySec: 10
+detailedRegions:
+  - name: europe-luxembourg
+    geoBBox:
+      minLon:  5.726280
+      minLat: 49.435092
+      maxLon:  6.554718
+      maxLat: 50.190968
+    maxZoom: 14
+
+  - name: europe-luxembourg-city
+    geoBBox:
+      minLon:  6.066685
+      minLat: 49.560059
+      maxLon:  6.203113
+      maxLat: 49.654016
+    maxZoom: 18

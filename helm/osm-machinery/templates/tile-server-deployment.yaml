@@ -21,7 +21,7 @@ spec:
     spec:
       containers:
         - name: tile-server
-          image: {{ printf "%s/%s:%s" $.Values.tileServer.image.registry $.Values.tileServer.image.repository $.Values.tileServer.image.tag | quote }}
+          {{- include "osm-machinery.image" $.Values.tileServer.image | indent 10 }}
           env:
             - name: PGHOST
               value: {{ print $.Release.Name "-postgres" | quote }}

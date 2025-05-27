@@ -1,0 +1,19 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ print $.Release.Name "-cinode-upload-config" | quote }}
+data:
+  config: |
+    urlTemplate: {{ printf "http://%s%s/tile/{z}/{x}/{y}.png" $.Release.Name "-tile-server-svc" | quote }}
+    minZoom: {{ $.Values.cinodeUpload.minZoom | int }}
+    planetMaxZoom: {{ $.Values.cinodeUpload.planetMaxZoom | int }}
+    maxTileDownloadRetries: {{ $.Values.cinodeUpload.maxTileDownloadRetries | int }}
+    maxTileDownloadRetryDelaySec: {{ $.Values.cinodeUpload.maxTileDownloadRetryDelaySec | int }}
+    detailedRegions:
+    {{- range $.Values.regions }}
+    {{-   if .enabled }}
+      - name: {{ .name | quote }}
+        geoBBox: {{ .geoBBox | toYaml | nindent 10 }}
+        maxZoom: {{ .maxZoom | default $.Values.cinodeUpload.defaultRegionMaxZoom }}
+    {{-   end }}
+    {{- end }}
