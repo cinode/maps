@@ -106,7 +106,7 @@ cinodeUpload:
 
   image:
     registry: ghcr.io
-    repository: cinode/tiles-updater
+    repository: cinode/maps-tile-uploader
     tag: "0.0.9"
 
   securityContext:

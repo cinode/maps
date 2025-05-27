@@ -26,7 +26,7 @@ jobs:
     strategy:
       matrix:
         app:
-          - name: tiles-updater
+          - name: maps-tile-uploader
     env:
       OUTPUTS_DIR: /tmp/outputs
 

@@ -40,9 +40,12 @@ else
     sed -i "s/^version: .*/version: $new_version/" "$CHART_FILE"
 fi
 
-# Update tile-uploader image tag in values.yaml
-# Match the tag line under cinodeUpload.image section
-sed -i "/^[[:space:]]*repository\:[[:space:]]*cinode\/tiles-updater/{n;s/^\([[:space:]]*\)tag: .*/\1tag: \"$new_version\"/}" "$VALUES_FILE"
+for image in \
+    maps-tile-uploader \
+; do
+    # Update tile-uploader image tags in values.yaml
+    sed -i "/^[[:space:]]*repository\:[[:space:]]*cinode\/${image}/{n;s/^\([[:space:]]*\)tag: .*/\1tag: \"$new_version\"/}" "$VALUES_FILE"
+done
 
 # Commit the version bump with GPG signature (but don't push)
 git add "$CHART_FILE" "$VALUES_FILE"
