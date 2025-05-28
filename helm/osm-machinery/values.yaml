@@ -82,7 +82,7 @@ tileServer:
   image:
     registry: ghcr.io
     repository: cinode/maps-tile-server
-    tag: "0.0.11"
+    tag: "0.0.12"
 
   securityContext:
     runAsUser: 1000
@@ -107,7 +107,7 @@ cinodeUpload:
   image:
     registry: ghcr.io
     repository: cinode/maps-tile-uploader
-    tag: "0.0.11"
+    tag: "0.0.12"
 
   securityContext:
     runAsUser: 1000
