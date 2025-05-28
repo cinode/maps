@@ -1,6 +1,7 @@
 deploy/
 build/
 helm/
+toolbox/
 .git/
 .github/
 .vscode/
