@@ -2,6 +2,28 @@ apiVersion: v1
 entries:
   osm-machinery:
   - apiVersion: v2
+    created: "2025-05-28T18:48:36.75068568Z"
+    dependencies:
+    - alias: postgres
+      name: postgresql
+      repository: https://charts.bitnami.com/bitnami
+      version: ^16
+    description: Toolbox to synchronize cinode maps with OpenStreetMap
+    digest: 6a038f9d6b43708f1ccd99d0b09f17933b5612b267f647e5600983302a5005c5
+    home: https://maps.cinodenet.org/
+    keywords:
+    - cinode
+    - maps
+    - OpenStreetMap
+    kubeVersion: '>= 1.23.0'
+    name: osm-machinery
+    sources:
+    - https://github.com/cinode/maps
+    type: application
+    urls:
+    - https://github.com/cinode/maps/releases/download/osm-machinery-0.0.11/osm-machinery-0.0.11.tgz
+    version: 0.0.11
+  - apiVersion: v2
     created: "2025-05-27T22:49:49.05576769Z"
     dependencies:
     - alias: postgres
@@ -221,4 +243,4 @@ entries:
     urls:
     - https://github.com/cinode/maps/releases/download/osm-machinery-0.0.1/osm-machinery-0.0.1.tgz
     version: 0.0.1
-generated: "2025-05-27T22:49:49.055810933Z"
+generated: "2025-05-28T18:48:36.750723101Z"
