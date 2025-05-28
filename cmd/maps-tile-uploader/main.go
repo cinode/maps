@@ -98,16 +98,19 @@ func main() {
 		fmt.Printf("  WriterInfo: %s\n", golang.Must(fs.RootWriterInfo(ctx)))
 	}
 
+	log := slog.Default()
+
 	gen := tilesGenerator{
 		cfg:   cfg,
 		fs:    fs,
-		log:   slog.Default(),
-		flush: NewFlushStrategy(fs, cfg.FlushStrategy, time.Now),
+		log:   log,
+		flush: NewFlushStrategy(fs, cfg.FlushStrategy, time.Now, log),
 	}
 
 	err = gen.Process(ctx)
 	if err != nil {
-		log.Fatal(err)
+		log.ErrorContext(ctx, "Failed to process tiles", "err", err)
+		os.Exit(1)
 	}
 }
 

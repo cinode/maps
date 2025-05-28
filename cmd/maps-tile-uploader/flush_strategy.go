@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"log/slog"
 	"time"
 
 	"github.com/cinode/go/pkg/cinodefs"
@@ -18,11 +19,13 @@ func NewFlushStrategy(
 	fs cinodefs.FS,
 	cfg FlushStrategyConfig,
 	timeSource func() time.Time,
+	log *slog.Logger,
 ) FlushStrategy {
 	return &flushStrategy{
 		fs:         fs,
 		cfg:        cfg,
 		timeSource: timeSource,
+		log:        log,
 	}
 }
 
@@ -38,9 +41,11 @@ type flushStrategy struct {
 	lastFlushTime time.Time
 	cfg           FlushStrategyConfig
 	timeSource    func() time.Time
+	log           *slog.Logger
 }
 
-func (f *flushStrategy) flush(ctx context.Context) error {
+func (f *flushStrategy) flush(ctx context.Context, reason string) error {
+	f.log.InfoContext(ctx, "Flushing filesystem", "reason", reason)
 	if err := f.fs.Flush(ctx); err != nil {
 		return err
 	}
@@ -59,16 +64,16 @@ func (f *flushStrategy) FlushOpportunity(ctx context.Context) error {
 		return nil
 	}
 
-	return f.flush(ctx)
+	return f.flush(ctx, "maxFlushInterval reached")
 }
 
 func (f *flushStrategy) ColumnFinished(ctx context.Context, isDetailedRegion bool) error {
 	if isDetailedRegion && f.cfg.FlushOnDetailedColumnFinished {
-		return f.flush(ctx)
+		return f.flush(ctx, "detailed column finished")
 	}
 
 	if f.cfg.FlushOnColumnFinished {
-		return f.flush(ctx)
+		return f.flush(ctx, "column finished")
 	}
 
 	return nil
@@ -76,12 +81,12 @@ func (f *flushStrategy) ColumnFinished(ctx context.Context, isDetailedRegion boo
 
 func (f *flushStrategy) ZLayerFinished(ctx context.Context) error {
 	if f.cfg.FlushOnZLayerFinished {
-		return f.flush(ctx)
+		return f.flush(ctx, "zoom layer finished")
 	}
 
 	return nil
 }
 
 func (f *flushStrategy) ProcessFinished(ctx context.Context) error {
-	return f.flush(ctx)
+	return f.flush(ctx, "process finished")
 }
