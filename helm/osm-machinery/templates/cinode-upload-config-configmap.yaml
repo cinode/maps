@@ -9,6 +9,11 @@ data:
     planetMaxZoom: {{ $.Values.cinodeUpload.planetMaxZoom | int }}
     maxTileDownloadRetries: {{ $.Values.cinodeUpload.maxTileDownloadRetries | int }}
     maxTileDownloadRetryDelaySec: {{ $.Values.cinodeUpload.maxTileDownloadRetryDelaySec | int }}
+    flushStrategy:
+      maxFlushInterval: 1h
+      flushOnDetailedColumnFinished: true
+      flushOnColumnFinished: true
+      flushOnZLayerFinished: true
     detailedRegions:
     {{- range $.Values.regions }}
     {{-   if .enabled }}

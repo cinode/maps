@@ -99,9 +99,10 @@ func main() {
 	}
 
 	gen := tilesGenerator{
-		cfg: cfg,
-		fs:  fs,
-		log: slog.Default(),
+		cfg:   cfg,
+		fs:    fs,
+		log:   slog.Default(),
+		flush: NewFlushStrategy(fs, cfg.FlushStrategy, time.Now),
 	}
 
 	err = gen.Process(ctx)
@@ -123,12 +124,14 @@ type Config struct {
 	MaxTileDownloadRetries       int                    `yaml:"maxTileDownloadRetries"`
 	MaxTileDownloadRetryDelaySec int                    `yaml:"maxTileDownloadRetryDelaySec"`
 	DetailedRegions              []DetailedRegionConfig `yaml:"detailedRegions"`
+	FlushStrategy                FlushStrategyConfig    `yaml:"flushStrategy"`
 }
 
 type tilesGenerator struct {
-	cfg Config
-	fs  cinodefs.FS
-	log *slog.Logger
+	cfg   Config
+	fs    cinodefs.FS
+	log   *slog.Logger
+	flush FlushStrategy
 }
 
 func (t *tilesGenerator) fetchTile(
@@ -161,6 +164,10 @@ func (t *tilesGenerator) fetchTile(
 
 	for retry := 0; ctx.Err() == nil; retry++ {
 		log := log.With("url", url, "retry", retry)
+
+		if err := t.flush.FlushOpportunity(ctx); err != nil {
+			return fmt.Errorf("failed to flush the filesystem: %w", err)
+		}
 
 		log.InfoContext(ctx, "Fetching tile started")
 
@@ -211,6 +218,10 @@ func (t *tilesGenerator) fetchTile(
 
 		log.InfoContext(ctx, "Tile uploaded to cinode", "bn", ep.BlobName().String())
 
+		if err := t.flush.FlushOpportunity(ctx); err != nil {
+			return fmt.Errorf("failed to flush the filesystem: %w", err)
+		}
+
 		return nil
 	}
 
@@ -250,6 +261,11 @@ func (t *tilesGenerator) genXLayer(
 			return err
 		}
 	}
+
+	if err := t.flush.ColumnFinished(ctx, true); err != nil {
+		return fmt.Errorf("failed to flush the filesystem: %w", err)
+	}
+
 	return nil
 }
 
@@ -288,13 +304,12 @@ func (t *tilesGenerator) genZLayer(
 		if err != nil {
 			return err
 		}
-
-		// For region-based z layer, flush once every column for better persistency and faster results
-		err = t.fs.Flush(ctx)
-		if err != nil {
-			return fmt.Errorf("failed to flush the filesystem: %w", err)
-		}
 	}
+
+	if err := t.flush.ZLayerFinished(ctx); err != nil {
+		return fmt.Errorf("failed to flush the filesystem: %w", err)
+	}
+
 	return nil
 }
 
@@ -310,6 +325,7 @@ func (t *tilesGenerator) genZLayerNoConstraints(
 			return err
 		}
 	}
+
 	return nil
 }
 
@@ -329,6 +345,11 @@ func (t *tilesGenerator) genXLayerNoConstraints(
 			return err
 		}
 	}
+
+	if err := t.flush.ColumnFinished(ctx, false); err != nil {
+		return fmt.Errorf("failed to flush the filesystem: %w", err)
+	}
+
 	return nil
 }
 
@@ -344,13 +365,11 @@ func (t *tilesGenerator) Process(ctx context.Context) error {
 		if err != nil {
 			return err
 		}
-		err = t.fs.Flush(ctx)
-		if err != nil {
-			return fmt.Errorf("failed to flush the filesystem: %w", err)
-		}
+	}
+
+	if err := t.flush.ProcessFinished(ctx); err != nil {
+		return fmt.Errorf("failed to flush the filesystem: %w", err)
 	}
 
 	return nil
 }
-
-// https://github.com/openstreetmap/mod_tile/pull/263#issuecomment-1006034286

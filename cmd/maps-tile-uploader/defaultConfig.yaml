@@ -3,6 +3,11 @@ minZoom: 0
 planetMaxZoom: 9
 maxTileDownloadRetries: 100
 maxTileDownloadRetryDelaySec: 10
+flushStrategy:
+  # maxFlushInterval: 1h
+  flushOnDetailedColumnFinished: false
+  flushOnColumnFinished: false
+  flushOnZLayerFinished: true
 detailedRegions:
   - name: europe-luxembourg
     geoBBox:
