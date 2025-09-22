@@ -35,7 +35,7 @@ to Cinode datastore. It is configured through environment variables:
 `
 
 func usage(msg string) {
-	for _, line := range strings.Split(usageStr, "\n") {
+	for line := range strings.SplitSeq(usageStr, "\n") {
 		log.Println(line)
 	}
 	log.Fatalf("Error: %s\n", msg)
