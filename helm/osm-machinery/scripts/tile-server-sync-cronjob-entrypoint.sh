@@ -38,11 +38,12 @@ if [ ! -f /data/database/planet-import-complete ]; then
     # No data exists yet, proceed with import
     echo "INFO: No data exists yet, proceeding with initial import"
     INITIAL_IMPORT=true
-{{- if $.Values.tileServer.syncJob.allowDataWipe }}
 elif [ z"$( cat /data/database/planet-import-complete 2>/dev/null || true )" != z"{{ $regionsChecksum }}" ]; then
-    # Checksum doesn't match, proceed with reimport
-    echo "INFO: Region configuration changed, proceeding with reimport"
+{{- if $.Values.tileServer.syncJob.allowDataWipe }}
+    echo "INFO: Region configuration changed, proceeding with clean import"
     INITIAL_IMPORT=true
+{{- else }}
+    echo "WARNING: Region configuration doesn't match, but keep updating existing data because data wipe was not explicitly requested"
 {{- end }}
 fi
 
