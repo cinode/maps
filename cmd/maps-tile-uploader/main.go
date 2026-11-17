@@ -4,7 +4,6 @@ import (
 	"context"
 	_ "embed"
 	"fmt"
-	"log"
 	"log/slog"
 	"net/http"
 	"os"
@@ -35,10 +34,9 @@ to Cinode datastore. It is configured through environment variables:
 `
 
 func usage(msg string) {
-	for line := range strings.SplitSeq(usageStr, "\n") {
-		log.Println(line)
-	}
-	log.Fatalf("Error: %s\n", msg)
+	fmt.Fprint(os.Stderr, usageStr)
+	fmt.Fprintf(os.Stderr, "\nError: %s\n", msg)
+	os.Exit(1)
 }
 
 func main() {
@@ -122,19 +120,19 @@ type DetailedRegionConfig struct {
 
 type Config struct {
 	URLTemplate                  string                 `yaml:"urlTemplate"`
+	FlushStrategy                FlushStrategyConfig    `yaml:"flushStrategy"`
+	DetailedRegions              []DetailedRegionConfig `yaml:"detailedRegions"`
 	MinZoom                      int                    `yaml:"minZoom"`
 	PlanetMaxZoom                int                    `yaml:"planetMaxZoom"`
 	MaxTileDownloadRetries       int                    `yaml:"maxTileDownloadRetries"`
 	MaxTileDownloadRetryDelaySec int                    `yaml:"maxTileDownloadRetryDelaySec"`
-	DetailedRegions              []DetailedRegionConfig `yaml:"detailedRegions"`
-	FlushStrategy                FlushStrategyConfig    `yaml:"flushStrategy"`
 }
 
 type tilesGenerator struct {
-	cfg   Config
 	fs    cinodefs.FS
-	log   *slog.Logger
 	flush FlushStrategy
+	log   *slog.Logger
+	cfg   Config
 }
 
 func (t *tilesGenerator) fetchTile(
@@ -166,22 +164,27 @@ func (t *tilesGenerator) fetchTile(
 	}
 
 	for retry := 0; ctx.Err() == nil; retry++ {
-		log := log.With("url", url, "retry", retry)
+		rLog := log.With("url", url, "retry", retry)
 
 		if err := t.flush.FlushOpportunity(ctx); err != nil {
 			return fmt.Errorf("failed to flush the filesystem: %w", err)
 		}
 
-		log.InfoContext(ctx, "Fetching tile started")
+		rLog.InfoContext(ctx, "Fetching tile started")
 
-		resp, err := http.Get(url)
+		req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, http.NoBody)
+		if err != nil {
+			return fmt.Errorf("invalid tile url: %w", err)
+		}
+
+		resp, err := http.DefaultClient.Do(req)
 		if err != nil || resp.StatusCode >= 400 {
 			if err != nil {
-				log.ErrorContext(ctx, "Error downloading tile", "err", err)
+				rLog.ErrorContext(ctx, "Error downloading tile", "err", err)
 				err = fmt.Errorf("error downloading tile: %w", err)
 			} else {
 				resp.Body.Close()
-				log.ErrorContext(ctx,
+				rLog.ErrorContext(ctx,
 					"Incorrect http status code when downloading tile",
 					"code", resp.StatusCode,
 					"status", resp.Status,
@@ -193,7 +196,7 @@ func (t *tilesGenerator) fetchTile(
 				return err
 			}
 
-			log.InfoContext(ctx, "Tile download failed, retrying", "retryDelay", retryDelay)
+			rLog.InfoContext(ctx, "Tile download failed, retrying", "retryDelay", retryDelay)
 			nextLoopRetryDelay()
 
 			continue
@@ -213,13 +216,13 @@ func (t *tilesGenerator) fetchTile(
 		resp.Body.Close()
 
 		if err != nil {
-			log.ErrorContext(ctx, "Error uploading tile to Cinode", "err", err, "retryDelay", retryDelay)
+			rLog.ErrorContext(ctx, "Error uploading tile to Cinode", "err", err, "retryDelay", retryDelay)
 			nextLoopRetryDelay()
 
 			continue
 		}
 
-		log.InfoContext(ctx, "Tile uploaded to cinode", "bn", ep.BlobName().String())
+		rLog.InfoContext(ctx, "Tile uploaded to cinode", "bn", ep.BlobName().String())
 
 		if err := t.flush.FlushOpportunity(ctx); err != nil {
 			return fmt.Errorf("failed to flush the filesystem: %w", err)
