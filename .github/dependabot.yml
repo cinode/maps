@@ -1,0 +1,87 @@
+version: 2
+
+updates:
+  # Go modules
+  #
+  # Security updates ignore version-update grouping, they are combined in
+  # a separate group so they can be reviewed and merged quickly.
+  - package-ecosystem: gomod
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    labels:
+      - dependencies
+      - go
+    commit-message:
+      prefix: deps
+    groups:
+      # Single PR with all minor / patch updates
+      go-minor-and-patch:
+        applies-to: version-updates
+        update-types:
+          - minor
+          - patch
+      go-security:
+        applies-to: security-updates
+        patterns:
+          - "*"
+    # Major version bumps arrive as separate PRs (no group) since they
+    # usually need code changes
+
+  # Base images in Dockerfiles
+  - package-ecosystem: docker
+    directory: /build/docker
+    schedule:
+      interval: weekly
+      day: monday
+    labels:
+      - dependencies
+      - docker
+    commit-message:
+      prefix: build
+    groups:
+      docker-images:
+        applies-to: version-updates
+        patterns:
+          - "*"
+
+  # Helm chart dependencies (postgresql)
+  - package-ecosystem: helm
+    directory: /helm/osm-machinery
+    schedule:
+      interval: weekly
+      day: monday
+    labels:
+      - dependencies
+      - helm
+    commit-message:
+      prefix: chart
+    groups:
+      helm-charts:
+        applies-to: version-updates
+        update-types:
+          - minor
+          - patch
+
+  # GitHub Actions used in workflows
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    labels:
+      - dependencies
+      - github-actions
+    commit-message:
+      prefix: ci
+    groups:
+      github-actions:
+        applies-to: version-updates
+        patterns:
+          - "*"
+      github-actions-security:
+        applies-to: security-updates
+        patterns:
+          - "*"
