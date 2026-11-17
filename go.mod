@@ -3,7 +3,7 @@ module github.com/cinode/osm-machinery
 go 1.27
 
 require (
-	github.com/cinode/go v0.0.11
+	github.com/cinode/go v0.0.12-0.20261117160924-c496165aadb5
 	github.com/stretchr/testify v1.12.1
 	gopkg.in/yaml.v3 v3.0.1
 )

@@ -38,10 +38,10 @@ type FlushStrategyConfig struct {
 
 type flushStrategy struct {
 	fs            cinodefs.FS
-	lastFlushTime time.Time
-	cfg           FlushStrategyConfig
 	timeSource    func() time.Time
 	log           *slog.Logger
+	lastFlushTime time.Time
+	cfg           FlushStrategyConfig
 }
 
 func (f *flushStrategy) flush(ctx context.Context, reason string) error {
