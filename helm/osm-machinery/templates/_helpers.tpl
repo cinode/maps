@@ -11,3 +11,15 @@ image: {{
 imagePullPolicy: {{ .pullPolicy | quote }}
 {{- end }}
 {{- end }}
+
+{{/*
+Settings of the selected import tuning profile (global.importTuning) as JSON
+*/}}
+{{- define "osm-machinery.importTuning" }}
+{{- $t := $.Values.global.importTuning }}
+{{- $p := index $t.profiles $t.profile }}
+{{- if not $p }}
+{{-   fail (printf "unknown global.importTuning.profile '%s', available profiles: %s" $t.profile (keys $t.profiles | sortAlpha | join ", ")) }}
+{{- end }}
+{{- $p | toJson }}
+{{- end }}
