@@ -189,7 +189,7 @@ tileServer:
   image:
     registry: ghcr.io
     repository: cinode/maps-tile-server
-    tag: "0.0.13"
+    tag: "0.0.14"
 
   securityContext:
     runAsUser: 1000
@@ -214,7 +214,7 @@ cinodeUpload:
   image:
     registry: ghcr.io
     repository: cinode/maps-tile-uploader
-    tag: "0.0.13"
+    tag: "0.0.14"
 
   securityContext:
     runAsUser: 1000
@@ -272,7 +272,7 @@ vectorMap:
   image:
     registry: ghcr.io
     repository: cinode/maps-vector-generator
-    tag: "0.0.13"
+    tag: "0.0.14"
 
   # Resources of the whole run, Planetiler is the most demanding step
   resources: {}
