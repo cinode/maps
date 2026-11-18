@@ -39,3 +39,73 @@ Changing PostgreSQL server settings restarts PostgreSQL which aborts a running
 import, the import is then started again from scratch. `noSync: true`
 additionally disables crash safety of PostgreSQL, a crash can then corrupt
 the database which has to be imported again.
+
+## Vector map (prototype)
+
+`maps-vector-uploader` publishes a vector tiles based map: pre-generated
+tiles split by zoom level (same `{z}/{x}/{y}` layout as the raster map),
+styled and rendered in the browser with MapLibre GL JS.
+
+Resulting cinode directory:
+
+```text
+/index.html               MapLibre viewer
+/overzoom.mjs             client-side over-zoom for regions with lower max zoom
+/style.json               map style (OpenMapTiles schema, derived from OSM Bright
+                          with OSM Carto-like colors, road widths and house numbers)
+/maplibre/                MapLibre GL JS
+/fonts/{fontstack}/{range}.pbf
+/sprites/sprite*.{json,png}
+/tiles/coverage.json      per-zoom bounding rectangles of existing tiles
+/tiles/{z}/{x}/{y}.pbf    uncompressed Mapbox Vector Tiles
+```
+
+### 1. Generate tiles with Planetiler
+
+[Planetiler](https://github.com/onthegomap/planetiler) builds OpenMapTiles-schema
+tiles straight from an `.osm.pbf` file (no database). Tiles must be written as
+plain files and **without gzip** (the cinode proxy does not set
+`Content-Encoding`).
+
+Low zoom levels for the whole world (Natural Earth + water polygons):
+
+```bash
+java -Xmx6g -jar planetiler.jar --area=luxembourg --bounds=world --download \
+    --output="tiles-world?format=files" --tile_compression=none --maxzoom=6
+```
+
+Detailed region(s):
+
+```bash
+java -Xmx6g -jar planetiler.jar --area=luxembourg --download \
+    --output="tiles-luxembourg?format=files" --tile_compression=none --maxzoom=14
+```
+
+### 2. Fetch client-side assets
+
+```bash
+toolbox/fetch-vector-assets.sh assets
+```
+
+### 3. Upload to cinode
+
+```bash
+CINODE_DATASTORE=<datastore> \
+CINODE_MAPTILES_NEW_WRITERINFO=1 \
+CINODE_VECTOR_TILES_DIRS=tiles-world:tiles-luxembourg \
+CINODE_VECTOR_ASSETS_DIR=assets \
+go run ./cmd/maps-vector-uploader
+```
+
+Tiles from later directories override earlier ones. Use
+`CINODE_MAPTILES_WRITERINFO=<writer info>` instead of
+`CINODE_MAPTILES_NEW_WRITERINFO` to update an existing map. Unchanged tiles
+produce the same blobs, so an update only stores what actually changed.
+
+### Different max zoom per region
+
+MapLibre supports a single max zoom per source. When a tile doesn't exist
+(e.g. z10 outside of detailed regions), `overzoom.mjs` fetches the closest
+existing ancestor tile (using `tiles/coverage.json` to skip non-existing ones)
+and rescales its geometry on the client. Above the highest generated zoom
+(14), MapLibre over-zooms natively.
