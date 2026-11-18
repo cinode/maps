@@ -132,3 +132,43 @@ options. By default the map is stored in a local datastore on the data
 volume and the map link is created on the first run; use
 `vectorMap.datastore` and `vectorMap.writerInfo` to publish to a real
 datastore.
+
+## Local testing in minikube
+
+`toolbox/minikube-test.sh` starts minikube (if needed), builds images
+from the working tree, loads them into minikube and deploys the chart with
+one of the presets from [toolbox/minikube](toolbox/minikube):
+
+```bash
+# Raster map (default)
+toolbox/minikube-test.sh
+
+# Vector map of Luxembourg - quick test, a few minutes
+toolbox/minikube-test.sh vector-luxembourg
+
+# Vector map of Poland - realistic dataset, ~30 min, needs a bigger minikube
+MINIKUBE_MEMORY=10g toolbox/minikube-test.sh vector-poland
+
+# Vector map of two neighbouring regions (Lubuskie, Brandenburg) - checks
+# that tiles along the border contain data of both, ~10 min
+toolbox/minikube-test.sh vector-border
+```
+
+For vector presets the map generation starts right away.
+`toolbox/minikube-view.sh` follows it and, once the first upload is done,
+serves the map on <http://localhost:8080/>:
+
+```bash
+toolbox/minikube-view.sh
+
+# Also reachable from other devices in the local network, e.g. a phone
+ADDRESS=0.0.0.0 toolbox/minikube-view.sh
+```
+
+Running `minikube-test.sh` again deploys the current code and starts a new
+generation, the same map link is updated. Downloaded data is kept on the
+data volume, which also holds the map link and is kept when the release
+is removed. To start from scratch remove the release
+(`helm uninstall cinode-maps --kube-context minikube`) and the volume
+(`minikube kubectl -- delete pvc cinode-maps-vector-data`) or the whole
+minikube (`minikube delete`).

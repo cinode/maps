@@ -1,0 +1,31 @@
+# Vector map of two regions sharing a border (Lubuskie in Poland and
+# Brandenburg in Germany) - checks that tiles along the border contain data
+# of both regions,
+# the run takes ~10 minutes and Planetiler needs ~3.5GB of memory
+mapType: vector
+
+postgres:
+  enabled: false
+
+vectorMap:
+  # Runs are started on demand by minikube-test.sh
+  suspend: true
+  planetiler:
+    javaOpts: "-Xmx3g"
+    extraArgs:
+      - --threads=4
+  uploader:
+    parallelism: 4
+  persistence:
+    size: 30Gi
+
+regions:
+  - enabled: true
+    name: europe-poland-lubuskie
+    pbf: https://download.geofabrik.de/europe/poland/lubuskie-latest.osm.pbf
+    poly: https://download.geofabrik.de/europe/poland/lubuskie.poly
+
+  - enabled: true
+    name: europe-germany-brandenburg
+    pbf: https://download.geofabrik.de/europe/germany/brandenburg-latest.osm.pbf
+    poly: https://download.geofabrik.de/europe/germany/brandenburg.poly

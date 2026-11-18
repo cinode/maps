@@ -1,0 +1,2 @@
+# Raster map (PostgreSQL + tile server) with default regions (Luxembourg)
+mapType: raster

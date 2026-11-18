@@ -1,0 +1,30 @@
+# Vector map of Luxembourg - small dataset for quick tests,
+# the whole run takes a few minutes and Planetiler needs ~2.5GB of memory
+mapType: vector
+
+postgres:
+  enabled: false
+
+vectorMap:
+  # Runs are started on demand by minikube-test.sh
+  suspend: true
+  planetiler:
+    # World sources (Natural Earth, water polygons) need ~2GB of heap
+    javaOpts: "-Xmx2g"
+    extraArgs:
+      - --threads=2
+  uploader:
+    parallelism: 2
+  persistence:
+    size: 10Gi
+
+regions:
+  - enabled: true
+    name: europe-luxembourg
+    pbf: https://download.geofabrik.de/europe/luxembourg-latest.osm.pbf
+    poly: https://download.geofabrik.de/europe/luxembourg.poly
+    geoBBox:
+      minLon: 5.726280
+      minLat: 49.435092
+      maxLon: 6.554718
+      maxLat: 50.190968
