@@ -4,10 +4,6 @@
 # Declare variables to be passed into your templates.
 
 global:
-  security:
-    # Needed by Bitnami charts for images from a non-default repository
-    allowInsecureImages: true
-
   # Tuning of PostgreSQL and of the initial osm2pgsql import of the raster
   # map. Settings come from the selected profile, each of them can also be
   # overridden individually, e.g.:
@@ -79,16 +75,28 @@ global:
           max_wal_senders: 0
 
 postgres:
-  # Bitnami images are no longer published to docker.io/bitnami, the last
-  # versions were moved to docker.io/bitnamilegacy and don't get updates
+  # Bitnami publishes free images only with the rolling "latest" tag, the
+  # image is pinned by digest to a known PostgreSQL / PostGIS version, it
+  # has to be updated manually:
+  #   docker buildx imagetools inspect docker.io/bitnami/postgresql:latest
+  # PostgreSQL major upgrades need a new import (or pg_upgrade) since the
+  # data directory of a previous major version can't be used.
   image:
-    repository: bitnamilegacy/postgresql
+    repository: bitnami/postgresql
+    # PostgreSQL 18.7, PostGIS 3.6.4 (linux/amd64, linux/arm64)
+    tag: latest
+    digest: sha256:ec2ef1dfb067c66aa83081405438e80786b4fae4647ca94330e0fc94398b9207
   postgresqlDatabase: gis
   auth:
     username: renderer
     password: renderer
     database: gis
   primary:
+    # The chart enables OpenSSL FIPS mode by default which disables md5(),
+    # used by the queries of the openstreetmap-carto style
+    fips:
+      openssl: "off"
+
     #persistence:
     #  size: 1G
     #  # To automatically mount local directory, uncomment and use unique storageClass
