@@ -1,3 +1,4 @@
+{{- if eq (include "osm-machinery.mapType" $) "raster" }}
 {{- if $.Values.postgres.primary.persistence.hostPath | default false }}
 ---
 apiVersion: v1
@@ -21,4 +22,5 @@ spec:
   }}
   hostPath:
     path: {{ $.Values.postgres.primary.persistence.hostPath | quote }}
+{{- end }}
 {{- end }}

@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Cinode maps</title>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="maplibre/maplibre-gl.css" />
+    <style>
+        html,
+        body,
+        #map {
+            width: 100%;
+            height: 100%;
+            margin: 0;
+            padding: 0;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="map"></div>
+    <script type="module">
+        import * as maplibregl from './maplibre/maplibre-gl.mjs';
+        import { registerOverzoomProtocol } from './overzoom.mjs';
+
+        // Tiles are generated up to different max zoom in different regions,
+        // missing tiles are rendered from the closest existing ancestor.
+        registerOverzoomProtocol(maplibregl, 'overzoom');
+
+        // All map resources (tiles, fonts, sprites) live next to this page
+        // inside the same cinode directory. MapLibre needs absolute URLs
+        // so relative paths from the style are resolved against the page.
+        const base = new URL('./', window.location.href).href;
+        const abs = (u) => /^[a-z][a-z0-9+.-]*:/i.test(u) ? u : base + u;
+
+        const style = await (await fetch(base + 'style.json')).json();
+        for (const src of Object.values(style.sources)) {
+            if (src.tiles) src.tiles = src.tiles.map((t) => 'overzoom://' + abs(t));
+            if (src.url) src.url = abs(src.url);
+        }
+        if (style.glyphs) style.glyphs = abs(style.glyphs);
+        if (typeof style.sprite === 'string') style.sprite = abs(style.sprite);
+
+        const map = new maplibregl.Map({
+            container: 'map',
+            style,
+            center: [10, 50],
+            zoom: 4,
+            hash: true,
+        });
+        // Buttons rotating the map, besides the built-in rotation with
+        // right mouse button / Ctrl + drag, two-finger twist or Shift + arrows.
+        // The compass of the navigation control shows the current rotation
+        // and resets it when clicked.
+        class RotateControl {
+            onAdd(map) {
+                this._container = document.createElement('div');
+                this._container.className = 'maplibregl-ctrl maplibregl-ctrl-group';
+                // Counter-clockwise arrow, mirrored for the clockwise one
+                const arrow = 'M5 12a7 7 0 1 0 2.05-4.95L5 9M5 4v5h5';
+                for (const [title, step, flip] of [
+                    ['Rotate left', 15, ''],
+                    ['Rotate right', -15, ' transform="matrix(-1 0 0 1 24 0)"'],
+                ]) {
+                    const button = document.createElement('button');
+                    button.type = 'button';
+                    button.title = title;
+                    button.setAttribute('aria-label', title);
+                    button.innerHTML = `<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"
+                        style="display:block;margin:auto"><path d="${arrow}"${flip} fill="none"
+                        stroke="#333" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+                    button.addEventListener('click', () => {
+                        // Quick clicks continue from the previous target
+                        // instead of the bearing in the middle of the animation
+                        const from = map.isMoving() && this._target !== undefined
+                            ? this._target : map.getBearing();
+                        this._target = from + step;
+                        map.easeTo({ bearing: this._target, duration: 300 });
+                    });
+                    this._container.appendChild(button);
+                }
+                return this._container;
+            }
+            onRemove() {
+                this._container.remove();
+            }
+        }
+
+        map.addControl(new maplibregl.NavigationControl());
+        map.addControl(new RotateControl());
+        map.addControl(new maplibregl.ScaleControl());
+        window.map = map;
+    </script>
+</body>
+
+</html>

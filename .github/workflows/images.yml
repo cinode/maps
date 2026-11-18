@@ -28,6 +28,11 @@ jobs:
         app:
           - name: maps-tile-uploader
             platforms: linux/amd64,linux/arm/v6,linux/arm/v7,linux/arm64,linux/riscv64
+          - name: maps-vector-uploader
+            platforms: linux/amd64,linux/arm/v6,linux/arm/v7,linux/arm64,linux/riscv64
+          # Based on the Planetiler image which is only available for those platforms
+          - name: maps-vector-generator
+            platforms: linux/amd64,linux/arm64
           - name: maps-tile-server
             platforms: linux/amd64,linux/arm64
     env:

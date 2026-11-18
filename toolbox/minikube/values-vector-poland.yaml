@@ -1,0 +1,27 @@
+# Vector map of Poland - realistic dataset, the run takes ~1h and Planetiler
+# needs ~8GB of memory (start minikube with MINIKUBE_MEMORY=10g)
+mapType: vector
+
+postgres:
+  enabled: false
+
+vectorMap:
+  # Runs are started on demand by minikube-test.sh
+  suspend: true
+  planetiler:
+    javaOpts: "-Xmx7g"
+  uploader:
+    parallelism: 4
+  persistence:
+    size: 30Gi
+
+regions:
+  - enabled: true
+    name: europe-poland
+    pbf: https://download.geofabrik.de/europe/poland-latest.osm.pbf
+    poly: https://download.geofabrik.de/europe/poland.poly
+    geoBBox:
+      minLat: 49.0061
+      minLon: 14.1213
+      maxLat: 54.8357
+      maxLon: 24.1533

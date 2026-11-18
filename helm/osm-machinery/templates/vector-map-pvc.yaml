@@ -1,0 +1,36 @@
+{{- if eq (include "osm-machinery.mapType" $) "vector" }}
+{{- $p := $.Values.vectorMap.persistence }}
+{{- if $p.hostPath }}
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: {{ print $.Release.Name "-vector-data-pv" | quote }}
+spec:
+  capacity:
+    storage: {{ $p.size | quote }}
+  volumeMode: Filesystem
+  accessModes: {{ $p.accessModes | toYaml | nindent 4 }}
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: {{ $p.storageClass | required "unique storageClass required for hostPath volume" | quote }}
+  hostPath:
+    path: {{ $p.hostPath | quote }}
+{{- end }}
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ print $.Release.Name "-vector-data" | quote }}
+  annotations:
+    # The volume holds the map link (writer info), losing it would change
+    # the map address, so it is kept when the release is removed
+    helm.sh/resource-policy: keep
+spec:
+  {{- if $p.storageClass }}
+  storageClassName: {{ $p.storageClass | quote }}
+  {{- end }}
+  accessModes: {{ $p.accessModes | toYaml | nindent 4 }}
+  resources:
+    requests:
+      storage: {{ $p.size | quote }}
+{{- end }}

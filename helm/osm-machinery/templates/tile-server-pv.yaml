@@ -1,3 +1,4 @@
+{{- if eq (include "osm-machinery.mapType" $) "raster" }}
 {{- if $.Values.tileServer.persistence.hostPath | default false }}
 ---
 apiVersion: v1
@@ -13,4 +14,5 @@ spec:
   storageClassName: {{ $.Values.tileServer.persistence.storageClass | quote }}
   hostPath:
     path: {{ $.Values.tileServer.persistence.hostPath | quote }}
+{{- end }}
 {{- end }}

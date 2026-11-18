@@ -1,0 +1,59 @@
+# syntax=docker/dockerfile:1
+# Complete vector map pipeline in one image: Planetiler generating the tiles,
+# maps-vector-uploader with the viewer assets publishing them to cinode
+ARG GO_VERSION=1.27
+
+# Base image with go compiler and tested source code
+FROM --platform=$BUILDPLATFORM docker.io/library/golang:${GO_VERSION} AS build
+
+# Compile and test with non-root user
+RUN useradd -ms /bin/bash go
+USER go
+RUN git config --global --add safe.directory /home/go/app
+
+# Fetch and verify dependencies
+WORKDIR /home/go/app
+COPY go.mod go.sum ./
+RUN go mod download -x
+RUN go mod verify
+
+# Bring in and test the source code
+COPY . .
+
+# Build binary
+ENV CGO_ENABLED=0
+ARG TARGETOS TARGETARCH TARGETVARIANT
+RUN GOOS=${TARGETOS} GOARCH=${TARGETARCH} GOARM=${TARGETVARIANT#v} \
+    go build \
+        -v \
+        -ldflags="-w -s" \
+        -o "/home/go/maps-vector-uploader" \
+        "./cmd/maps-vector-uploader"
+
+# Client-side assets of the map viewer (MapLibre GL JS, fonts, sprites),
+# they are platform-independent so are fetched once on the build platform
+FROM --platform=$BUILDPLATFORM docker.io/library/node:22-bookworm AS assets
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends unzip \
+    && rm -rf /var/lib/apt/lists/*
+COPY toolbox/fetch-vector-assets.sh /usr/local/bin/fetch-vector-assets.sh
+RUN fetch-vector-assets.sh /assets
+
+FROM ghcr.io/onthegomap/planetiler:0.10.2
+# osmium merges OSM extracts of neighbouring regions
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends osmium-tool \
+    && rm -rf /var/lib/apt/lists/*
+COPY --from=build /home/go/maps-vector-uploader /usr/local/bin/maps-vector-uploader
+COPY --from=assets /assets /usr/share/maps-vector-uploader/assets
+COPY --chmod=755 toolbox/prepare-osm-extract.sh /usr/local/bin/prepare-osm-extract
+COPY --chmod=755 toolbox/generate-vector-tiles.sh /usr/local/bin/generate-vector-tiles
+ENV CINODE_VECTOR_ASSETS_DIR=/usr/share/maps-vector-uploader/assets
+# Generated files are owned by the default non-root user
+USER ubuntu:ubuntu
+# Steps are run as commands, e.g.:
+#   prepare-osm-extract <name> <pbf-url> <poly-url> [<pbf-url> <poly-url>...]
+#   generate-vector-tiles <name> <osm-file> <min-zoom> <max-zoom> [planetiler args...]
+#   maps-vector-uploader
+ENTRYPOINT []
+CMD [ "/bin/bash" ]

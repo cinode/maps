@@ -1,3 +1,4 @@
+{{- if eq (include "osm-machinery.mapType" $) "raster" }}
 {{- if $.Values.tileServer.syncJob.enabled -}}
 {{- $scripts := list "tile-server-sync-cronjob-entrypoint.sh" -}}
 ---
@@ -79,3 +80,4 @@ spec:
           # Do not restart failed jobs - we will reschedule quickly anyway
           restartPolicy: Never
 {{- end -}}
+{{- end }}
