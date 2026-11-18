@@ -109,3 +109,26 @@ MapLibre supports a single max zoom per source. When a tile doesn't exist
 existing ancestor tile (using `tiles/coverage.json` to skip non-existing ones)
 and rescales its geometry on the client. Above the highest generated zoom
 (14), MapLibre over-zooms natively.
+
+### Running in Kubernetes
+
+The `osm-machinery` helm chart generates either map type, selected with
+`mapType`:
+
+* `raster` (default) - PostgreSQL + tile server, uploaded by
+  `maps-tile-uploader`,
+* `vector` - a single CronJob running the steps one after another:
+  downloading extracts (`pbf` + `poly`) of enabled regions and merging them
+  into one extract with osmium, generating tiles with Planetiler (low zoom
+  levels for the whole world, then all regions at once, limited to their
+  polygons) and uploading them with `maps-vector-uploader`, plus an
+  optional viewer (cinode web proxy). Merging the extracts first makes tiles
+  along borders of neighbouring regions contain data of all of them.
+  Everything runs in the `maps-vector-generator` image. Requires
+  `postgres.enabled=false`.
+
+See `vectorMap` in [values.yaml](helm/osm-machinery/values.yaml) for all
+options. By default the map is stored in a local datastore on the data
+volume and the map link is created on the first run; use
+`vectorMap.datastore` and `vectorMap.writerInfo` to publish to a real
+datastore.

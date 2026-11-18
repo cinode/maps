@@ -245,6 +245,101 @@ cinodeUpload:
     secretName: ""
     secretKey: writerinfo
 
+vectorMap:
+  # Steps run one after another in a single CronJob: download of region
+  # extracts (pbf + poly) merged into one extract, tiles generation (world,
+  # then all regions at once) and upload. To run it right away:
+  #   kubectl create job --from=cronjob/<release>-vector-map <name>
+  #
+  # Every enabled region with own extract (pbf) needs its polygon (poly),
+  # tiles are only generated inside those polygons. Extracts of neighbouring
+  # regions overlap a bit, merging them first makes tiles along borders
+  # contain data of all regions.
+  schedule: "0 0 * * 0"
+  suspend: false
+
+  # Low zoom levels for the whole world (Natural Earth, water polygons),
+  # OSM features at those levels only come from the regions
+  world:
+    enabled: true
+    maxZoom: 6
+
+  # Max zoom of region tiles, MapLibre over-zooms vector tiles beyond that
+  # level on the client
+  maxZoom: 14
+
+  # Image with Planetiler, maps-vector-uploader and the viewer assets
+  image:
+    registry: ghcr.io
+    repository: cinode/maps-vector-generator
+    tag: "0.0.13"
+
+  # Resources of the whole run, Planetiler is the most demanding step
+  resources: {}
+
+  planetiler:
+    # Java heap limit, larger regions need more (Poland: ~8g)
+    javaOpts: "-Xmx2g"
+    extraArgs: []
+
+  uploader:
+    parallelism: 4
+
+  # Target datastore, when empty a local datastore on the data volume is used
+  datastore:
+    value: ""
+    existingSecret: false
+    secretName: ""
+    secretKey: datastore
+
+  # Writer info of the map, when empty a new link is created on the first
+  # run and its writer info is kept on the data volume
+  writerInfo:
+    value: ""
+    existingSecret: false
+    secretName: ""
+    secretKey: writerinfo
+
+  securityContext:
+    runAsUser: 1000
+    runAsGroup: 1000
+    fsGroup: 1000
+    fsGroupChangePolicy: "OnRootMismatch"
+
+  containerSecurityContext:
+    readOnlyRootFilesystem: true
+    allowPrivilegeEscalation: false
+
+  # Cinode web proxy serving the map from the datastore, the map link is
+  # read from the data volume when the first upload finishes
+  viewer:
+    enabled: true
+    image:
+      registry: ghcr.io
+      repository: cinode/web_proxy
+      tag: "0.0.11"
+    # Small image with a shell used to wait for the first upload
+    waitImage:
+      registry: docker.io
+      repository: library/busybox
+      tag: "1.37"
+    resources: {}
+    ingress:
+      enabled: false
+      className: ""
+      hosts:
+        - cinode-maps
+
+  # Volume with downloaded sources, generated tiles, the local datastore
+  # and the map link
+  persistence:
+    size: 20Gi
+    storageClass: ""
+    # To use a local directory, set hostPath and a unique storageClass
+    hostPath: ""
+    accessModes:
+      - ReadWriteOnce
+
 regions:
   - enabled: true
     name: europe-luxembourg

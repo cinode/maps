@@ -1,0 +1,110 @@
+{{- if and (eq (include "osm-machinery.mapType" $) "vector") $.Values.vectorMap.viewer.enabled }}
+{{- $v := $.Values.vectorMap }}
+{{- $name := print $.Release.Name "-vector-viewer" }}
+{{- $ds := include "osm-machinery.secretEnv" (dict "env" "CINODE_MAIN_DATASTORE" "cfg" $v.datastore "defaultSecret" (print $.Release.Name "-vector-map-secret")) }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ $name | quote }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: {{ $name | quote }}
+  template:
+    metadata:
+      labels:
+        app: {{ $name | quote }}
+    spec:
+      securityContext: {{- $v.securityContext | toYaml | nindent 8 }}
+      initContainers:
+        # The map link is created by the first run of the vector map job
+        - name: wait-for-map
+          {{- include "osm-machinery.image" $v.viewer.waitImage | indent 10 }}
+          command:
+            - sh
+            - -c
+            - |
+              until [ -s /data/link/entrypoint ]; do
+                echo "Waiting for the first vector map upload"
+                sleep 10
+              done
+          securityContext: {{- $v.containerSecurityContext | toYaml | nindent 12 }}
+          volumeMounts:
+            - name: data
+              mountPath: /data
+              readOnly: true
+      containers:
+        - name: web-proxy
+          {{- include "osm-machinery.image" $v.viewer.image | indent 10 }}
+          env:
+            - name: CINODE_ENTRYPOINT_FILE
+              value: /data/link/entrypoint
+            {{- if $ds }}
+            {{- $ds | indent 12 }}
+            {{- else }}
+            - name: CINODE_MAIN_DATASTORE
+              value: "file:///data/datastore"
+            {{- end }}
+            - name: CINODE_LISTEN_PORT
+              value: "8080"
+          ports:
+            - name: http
+              containerPort: 8080
+          readinessProbe:
+            httpGet:
+              path: /index.html
+              port: http
+          resources: {{- $v.viewer.resources | toYaml | nindent 12 }}
+          securityContext: {{- $v.containerSecurityContext | toYaml | nindent 12 }}
+          volumeMounts:
+            - name: data
+              mountPath: /data
+              readOnly: true
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: {{ print $.Release.Name "-vector-data" | quote }}
+        - name: tmp
+          emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ $name | quote }}
+spec:
+  selector:
+    app: {{ $name | quote }}
+  ports:
+    - name: http
+      protocol: TCP
+      port: 80
+      targetPort: http
+{{- if $v.viewer.ingress.enabled }}
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ $name | quote }}
+spec:
+  {{- if $v.viewer.ingress.className }}
+  ingressClassName: {{ $v.viewer.ingress.className | quote }}
+  {{- end }}
+  rules:
+  {{- range $host := $v.viewer.ingress.hosts }}
+  - host: {{ $host | quote }}
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: {{ $name | quote }}
+            port:
+              name: http
+  {{- end }}
+{{- end }}
+{{- end }}

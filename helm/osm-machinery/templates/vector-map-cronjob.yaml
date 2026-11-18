@@ -1,0 +1,92 @@
+{{- if eq (include "osm-machinery.mapType" $) "vector" }}
+{{- $v := $.Values.vectorMap }}
+{{- $regions := (include "osm-machinery.vectorRegions" $ | fromJson).regions }}
+{{- if not $regions }}
+{{-   fail "vector map requires at least one enabled region with own OSM extract (pbf)" }}
+{{- end }}
+{{- $defaultSecret := print $.Release.Name "-vector-map-secret" }}
+{{- $tilesDirs := list }}
+{{- $minRegionZoom := 0 }}
+{{- if $v.world.enabled }}
+{{-   $tilesDirs = append $tilesDirs "/data/tiles/world" }}
+{{-   $minRegionZoom = add1 ($v.world.maxZoom | int) }}
+{{- end }}
+{{- $tilesDirs = append $tilesDirs "/data/tiles/regions" }}
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: {{ print $.Release.Name "-vector-map" | quote }}
+spec:
+  schedule: {{ $v.schedule | quote }}
+  suspend: {{ $v.suspend }}
+
+  # Tiles generation and upload use the same data volume and modify the
+  # same cinode link so they must never run concurrently
+  concurrencyPolicy: Forbid
+
+  jobTemplate:
+    spec:
+      backoffLimit: 1
+      template:
+        metadata:
+          labels:
+            app: {{ print $.Release.Name "-vector-map" | quote }}
+        spec:
+          securityContext: {{- $v.securityContext | toYaml | nindent 12 }}
+          restartPolicy: Never
+          containers:
+            - name: generate
+              {{- include "osm-machinery.image" $v.image | indent 14 }}
+              # Steps run one after another. Extracts of all regions are
+              # merged first, so that tiles along shared borders are generated
+              # from data of all neighbouring regions
+              command:
+                - /bin/bash
+                - -c
+                - |
+                  set -euo pipefail
+                  prepare-osm-extract regions {{- range $regions }} {{ .pbf | squote }} {{ .poly | squote }}{{ end }}
+                  {{- if $v.world.enabled }}
+                  generate-vector-tiles world /data/osm/regions.osm.pbf 0 {{ $v.world.maxZoom | int }} --bounds=world {{- include "osm-machinery.planetilerArgs" $ }}
+                  {{- end }}
+                  generate-vector-tiles regions /data/osm/regions.osm.pbf {{ $minRegionZoom }} {{ $v.maxZoom | int }} --polygon=/data/osm/regions.poly {{- include "osm-machinery.planetilerArgs" $ }}
+                  maps-vector-uploader
+              env:
+                - name: JAVA_TOOL_OPTIONS
+                  value: {{ print $v.planetiler.javaOpts " -Djava.io.tmpdir=/tmp" | quote }}
+                {{- $ds := include "osm-machinery.secretEnv" (dict "env" "CINODE_DATASTORE" "cfg" $v.datastore "defaultSecret" $defaultSecret) }}
+                {{- if $ds }}
+                {{- $ds | indent 16 }}
+                {{- else }}
+                - name: CINODE_DATASTORE
+                  value: "file:///data/datastore"
+                {{- end }}
+                {{- $wi := include "osm-machinery.secretEnv" (dict "env" "CINODE_MAPTILES_WRITERINFO" "cfg" $v.writerInfo "defaultSecret" $defaultSecret) }}
+                {{- if $wi }}
+                {{- $wi | indent 16 }}
+                {{- else }}
+                - name: CINODE_MAPTILES_WRITERINFO_FILE
+                  value: /data/link/writerinfo
+                {{- end }}
+                - name: CINODE_MAPTILES_ENTRYPOINT_FILE
+                  value: /data/link/entrypoint
+                - name: CINODE_VECTOR_TILES_DIRS
+                  value: {{ join ":" $tilesDirs | quote }}
+                - name: CINODE_VECTOR_PARALLELISM
+                  value: {{ $v.uploader.parallelism | quote }}
+              resources: {{- $v.resources | toYaml | nindent 16 }}
+              securityContext: {{- $v.containerSecurityContext | toYaml | nindent 16 }}
+              volumeMounts:
+                - name: data
+                  mountPath: /data
+                - name: tmp
+                  mountPath: /tmp
+
+          volumes:
+            - name: data
+              persistentVolumeClaim:
+                claimName: {{ print $.Release.Name "-vector-data" | quote }}
+            - name: tmp
+              emptyDir: {}
+{{- end }}

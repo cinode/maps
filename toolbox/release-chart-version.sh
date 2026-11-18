@@ -42,6 +42,7 @@ fi
 
 for image in \
     maps-tile-uploader \
+    maps-vector-generator \
     maps-tile-server \
 ; do
     # Update image tags in values.yaml
