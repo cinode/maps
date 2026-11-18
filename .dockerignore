@@ -2,6 +2,9 @@ deploy/
 build/
 helm/
 toolbox/
+!toolbox/fetch-vector-assets.sh
+!toolbox/generate-vector-tiles.sh
+!toolbox/prepare-osm-extract.sh
 .git/
 .github/
 .vscode/
