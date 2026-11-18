@@ -11,6 +11,7 @@
 {{-   end }}
 {{- end }}
 {{- $regionsChecksum := toJson $regions | sha256sum }}
+{{- $tuning := include "osm-machinery.importTuning" $ | fromJson }}
 #!/bin/sh
 
 set -eu
@@ -113,6 +114,10 @@ echo "INFO: Oldest replication timestamp: $REPLICATION_TIMESTAMP"
 # initial setup of osmosis workspace (for consecutive updates)
 /tmp/otue.sh $REPLICATION_TIMESTAMP || true
 
+# PostgreSQL settings of the import sessions, they don't require restart
+export PGOPTIONS="{{ range $k, $v := $tuning.session }}{{ if $v }} -c {{ $k }}={{ $v }}{{ end }}{{ end }}"
+echo "INFO: Import tuning profile: {{ $.Values.global.importTuning.profile }}, session settings:${PGOPTIONS}"
+
 # Import data, osm2pgsql is not the last command in the pipeline so its
 # exit status is saved separately (sh has no pipefail)
 echo 1 > /tmp/osm2pgsql.status
@@ -120,10 +125,13 @@ echo 1 > /tmp/osm2pgsql.status
     rc=0
     osm2pgsql -d gis --create --slim -G --hstore  \
         --tag-transform-script /data/style/${NAME_LUA:-openstreetmap-carto.lua}  \
-        --number-processes ${THREADS:-4}  \
+        --number-processes {{ $tuning.osm2pgsql.threads | default "${THREADS:-4}" }}  \
+        {{- with $tuning.osm2pgsql.cache }}
+        --cache {{ . }}  \
+        {{- end }}
         -S /data/style/${NAME_STYLE:-openstreetmap-carto.style}  \
         /data/download/region.osm.pbf  \
-        ${OSM2PGSQL_EXTRA_ARGS:-}  \
+        {{ $tuning.osm2pgsql.extraArgs }} ${OSM2PGSQL_EXTRA_ARGS:-}  \
     2>&1 || rc=$?
     echo $rc > /tmp/osm2pgsql.status
 } | stdbuf -o0 tr '\r' '\n';

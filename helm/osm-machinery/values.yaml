@@ -8,6 +8,76 @@ global:
     # Needed by Bitnami charts for images from a non-default repository
     allowInsecureImages: true
 
+  # Tuning of PostgreSQL and of the initial osm2pgsql import of the raster
+  # map. Settings come from the selected profile, each of them can also be
+  # overridden individually, e.g.:
+  #   global.importTuning.profiles.optimized.osm2pgsql.cache=6000
+  # It is a global value since it is also used by the PostgreSQL subchart,
+  # in umbrella charts it must be set in the top-level global section.
+  importTuning:
+    # minimal   - small extracts (e.g. Luxembourg), local tests in minikube
+    # optimized - large extracts on a dedicated machine with >= 16GB of RAM
+    profile: minimal
+
+    # Disables crash safety of PostgreSQL (fsync, full_page_writes,
+    # synchronous_commit) which speeds up writes, mostly on slow disks.
+    # A crash of PostgreSQL or of the machine can corrupt the database,
+    # which then has to be imported again.
+    noSync: false
+
+    profiles:
+      minimal:
+        osm2pgsql:
+          # Node cache in MB (-C). Node locations missing in the cache are
+          # looked up from the database which makes processing of ways very
+          # slow. It should ideally hold all nodes of the imported extract
+          # (osm2pgsql 1.6 needs ~5-9 bytes per node) but must leave enough
+          # memory for PostgreSQL.
+          cache: 800
+          # Number of osm2pgsql processes (--number-processes)
+          threads: 2
+          # Additional arguments, e.g. "--disable-parallel-indexing" to build
+          # indexes one by one on machines with slow disks or low memory
+          extraArgs: ""
+        # Settings of the import sessions (osm2pgsql, index creation) passed
+        # through PGOPTIONS, they don't need PostgreSQL restart. Indexes of
+        # multiple tables are built in parallel, each of them can use up to
+        # maintenance_work_mem.
+        session:
+          maintenance_work_mem: 256MB
+          work_mem: 128MB
+        # PostgreSQL server settings, changing them restarts PostgreSQL which
+        # aborts a running import
+        postgres:
+          shared_buffers: 128MB
+          maintenance_work_mem: 256MB
+          max_wal_size: 2880MB
+          checkpoint_timeout: 5min
+          checkpoint_completion_target: 0.9
+          # No replication is used, tables created and loaded in the same
+          # transaction (clustering of output tables) skip WAL entirely
+          wal_level: minimal
+          max_wal_senders: 0
+
+      # Based on the recommendations of the osm2pgsql manual:
+      # https://osm2pgsql.org/doc/manual.html#preparing-the-database
+      optimized:
+        osm2pgsql:
+          cache: 8000
+          threads: 2
+          extraArgs: ""
+        session:
+          maintenance_work_mem: 1GB
+          work_mem: 256MB
+        postgres:
+          shared_buffers: 1GB
+          maintenance_work_mem: 1GB
+          max_wal_size: 10GB
+          checkpoint_timeout: 30min
+          checkpoint_completion_target: 0.9
+          wal_level: minimal
+          max_wal_senders: 0
+
 postgres:
   # Bitnami images are no longer published to docker.io/bitnami, the last
   # versions were moved to docker.io/bitnamilegacy and don't get updates
@@ -29,14 +99,13 @@ postgres:
       requests: {}
       limits: {}
 
+    # Rendered as a template, settings of the selected import tuning
+    # profile are added at the end
     extendedConfiguration: |
       # Suggested minimal settings from
       # https://ircama.github.io/osm-carto-tutorials/tile-server-ubuntu/
 
-      shared_buffers = 128MB
       min_wal_size = 1GB
-      # max_wal_size = 2GB # Overridden below
-      maintenance_work_mem = 256MB
 
       # Suggested settings from
       # https://github.com/openstreetmap/chef/blob/master/roles/tile.rb#L38-L45
@@ -48,13 +117,24 @@ postgres:
       wal_writer_delay = 500ms
       commit_delay = 10000
       # checkpoint_segments = 60 # unrecognized in psql 10.7.1
-      max_wal_size = 2880MB
       random_page_cost = 1.1
       track_activity_query_size = 16384
       autovacuum_vacuum_scale_factor = 0.05
       autovacuum_analyze_scale_factor = 0.02
 
       autovacuum = on
+
+      # Import tuning profile: {{ .Values.global.importTuning.profile }}
+      {{- range $k, $v := (index .Values.global.importTuning.profiles .Values.global.importTuning.profile).postgres }}
+      {{ $k }} = {{ $v }}
+      {{- end }}
+      {{- if .Values.global.importTuning.noSync }}
+
+      # Crash safety disabled with global.importTuning.noSync
+      fsync = off
+      full_page_writes = off
+      synchronous_commit = off
+      {{- end }}
 
     initdb:
       scripts:
