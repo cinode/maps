@@ -1,3 +1,4 @@
+{{- if eq (include "osm-machinery.mapType" $) "raster" }}
 {{- if $.Values.cinodeUpload.enabled -}}
 ---
 apiVersion: batch/v1
@@ -91,3 +92,4 @@ spec:
             - name: tmp
               emptyDir: {}
 {{- end -}}
+{{- end }}

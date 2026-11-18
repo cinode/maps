@@ -1,3 +1,4 @@
+{{- if eq (include "osm-machinery.mapType" $) "raster" }}
 {{- if $.Values.tileServer.webServer.enabled }}
 {{- $scripts := list "expire-server.py" "tile-server-entrypoint.sh" -}}
 ---
@@ -91,4 +92,5 @@ spec:
               - key: {{ $s | quote  }}
                 path: {{ $s | quote }}
             {{- end }}
+{{- end }}
 {{- end }}

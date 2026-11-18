@@ -23,3 +23,17 @@ Settings of the selected import tuning profile (global.importTuning) as JSON
 {{- end }}
 {{- $p | toJson }}
 {{- end }}
+
+{{/*
+Validated type of the generated map: "raster" or "vector"
+*/}}
+{{- define "osm-machinery.mapType" }}
+{{- $mapType := $.Values.mapType | default "raster" }}
+{{- if not (has $mapType (list "raster" "vector")) }}
+{{-   fail (printf "mapType must be either 'raster' or 'vector', got '%s'" $mapType) }}
+{{- end }}
+{{- if and (eq $mapType "vector") $.Values.postgres.enabled }}
+{{-   fail "mapType 'vector' does not use PostgreSQL, set postgres.enabled=false" }}
+{{- end }}
+{{- $mapType }}
+{{- end }}
