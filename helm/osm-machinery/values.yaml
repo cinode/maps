@@ -3,7 +3,16 @@
 # This is a YAML-formatted file.
 # Declare variables to be passed into your templates.
 
+global:
+  security:
+    # Needed by Bitnami charts for images from a non-default repository
+    allowInsecureImages: true
+
 postgres:
+  # Bitnami images are no longer published to docker.io/bitnami, the last
+  # versions were moved to docker.io/bitnamilegacy and don't get updates
+  image:
+    repository: bitnamilegacy/postgresql
   postgresqlDatabase: gis
   auth:
     username: renderer
