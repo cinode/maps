@@ -113,14 +113,25 @@ echo "INFO: Oldest replication timestamp: $REPLICATION_TIMESTAMP"
 # initial setup of osmosis workspace (for consecutive updates)
 /tmp/otue.sh $REPLICATION_TIMESTAMP || true
 
-# Import data
-osm2pgsql -d gis --create --slim -G --hstore  \
-    --tag-transform-script /data/style/${NAME_LUA:-openstreetmap-carto.lua}  \
-    --number-processes ${THREADS:-4}  \
-    -S /data/style/${NAME_STYLE:-openstreetmap-carto.style}  \
-    /data/download/region.osm.pbf  \
-    ${OSM2PGSQL_EXTRA_ARGS:-}  \
-2>&1 | stdbuf -o0 tr '\r' '\n';
+# Import data, osm2pgsql is not the last command in the pipeline so its
+# exit status is saved separately (sh has no pipefail)
+echo 1 > /tmp/osm2pgsql.status
+{
+    rc=0
+    osm2pgsql -d gis --create --slim -G --hstore  \
+        --tag-transform-script /data/style/${NAME_LUA:-openstreetmap-carto.lua}  \
+        --number-processes ${THREADS:-4}  \
+        -S /data/style/${NAME_STYLE:-openstreetmap-carto.style}  \
+        /data/download/region.osm.pbf  \
+        ${OSM2PGSQL_EXTRA_ARGS:-}  \
+    2>&1 || rc=$?
+    echo $rc > /tmp/osm2pgsql.status
+} | stdbuf -o0 tr '\r' '\n';
+
+if [ "$( cat /tmp/osm2pgsql.status )" != "0" ]; then
+    echo "ERROR: osm2pgsql import failed with status $( cat /tmp/osm2pgsql.status )"
+    exit 1
+fi
 
 rm -rf /data/download/*
 
