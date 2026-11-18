@@ -22,6 +22,6 @@ kubeVersion: ">= 1.23.0"  # Support generic ephemeral volumes
 
 dependencies:
   - name: postgresql
-    version: "^16"
+    version: "^18"
     repository: "https://charts.bitnami.com/bitnami"
     alias: postgres
