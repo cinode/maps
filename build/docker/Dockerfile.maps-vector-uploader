@@ -32,7 +32,7 @@ RUN GOOS=${TARGETOS} GOARCH=${TARGETARCH} GOARM=${TARGETVARIANT#v} \
 
 # Client-side assets of the map viewer (MapLibre GL JS, fonts, sprites),
 # they are platform-independent so are fetched once on the build platform
-FROM --platform=$BUILDPLATFORM docker.io/library/node:22-bookworm AS assets
+FROM --platform=$BUILDPLATFORM docker.io/library/node:26-bookworm AS assets
 RUN apt-get update \
     && apt-get install -y --no-install-recommends unzip \
     && rm -rf /var/lib/apt/lists/*
